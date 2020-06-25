@@ -1,0 +1,5 @@
+---
+bool data_received
+nav_msgs/Odometry odom
+sensor_msgs/LaserScan scan
+# other sensors can be added. Remember to update dependencies
