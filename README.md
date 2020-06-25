@@ -27,6 +27,9 @@ only two nodes are hence generated
 
 Node 1 reads the state from gazebo and when requested send the state to Node 2. However the action is not sent by Node 1 but from Node 2, which does it simply pulishing to cmd_vel topic. Than Node 2 waits for 0.1 (it can be changed of course) while Node 1 collects sensors data.
 
+![alt text](https://github.com/PIC4SeRCentre/pic4rl/blob/master/Screenshot%20from%202020-06-25%2019-31-13.png?raw=true)
+
+
 ## Installation procedure
 ...
 
