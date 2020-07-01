@@ -237,29 +237,27 @@ class Pic4rlEnvironment(Node):
 		return state_list
 
 	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
-		
 		yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))
         #yaw_reward = - (1/(1.2*DESIRED_CTRL_HZ) - self.goal_angle)**2 +1
         #distance_reward = 2*((2 * self.init_goal_distance) / \
         #    (self.init_goal_distance + goal_distance) - 1)
-        
         #distance_reward = (2 - 2**(self.goal_distance / self.init_goal_distance))
-        distance_reward = (self.previous_goal_distance - goal_distance)*30
+		distance_reward = (self.previous_goal_distance - goal_distance)*30
 
         # Reward for avoiding obstacles
-        if self.min_obstacle_distance < 0.25:
-            obstacle_reward = -2
-        else:
-            obstacle_reward = 0
+		if self.min_obstacle_distance < 0.25:
+			obstacle_reward = -2
+		else:
+			obstacle_reward = 0
         
-        reward = yaw_reward + distance_reward + obstacle_reward
+		reward = yaw_reward + distance_reward + obstacle_reward
 
 
 		if event == "goal":
 			reward+=10
-		elif event == "collision"
+		elif event == "collision":
 			reward += -10
-		elif event == "timeout"
+		elif event == "timeout":
 			reward += -10
 		self.get_logger().debug(str(reward))
 
@@ -271,16 +269,16 @@ class Pic4rlEnvironment(Node):
 		return reward
 
 	def get_goal(self):
-        if self.stage != 4:
-            x = random.randrange(-15, 16) / 10.0
-            y = random.randrange(-15, 16) / 10.0
-        else:
-            goal_pose_list = [[1.0, 0.0], [2.0, -1.5], [0.0, -2.0], [2.0, 2.0], [0.8, 2.0],
-                              [-1.9, 1.9], [-1.9, 0.2], [-1.9, -0.5], [-2.0, -2.0], [-0.5, -1.0]]
-            index = random.randrange(0, 10)
-            x = goal_pose_list[index][0]
-            y = goal_pose_list[index][1]
-            print("Goal pose: ", x, y)
+		if self.stage != 4:
+			x = random.randrange(-15, 16) / 10.0
+			y = random.randrange(-15, 16) / 10.0
+		else:
+			goal_pose_list = [[1.0, 0.0], [2.0, -1.5], [0.0, -2.0], [2.0, 2.0], [0.8, 2.0],
+							  [-1.9, 1.9], [-1.9, 0.2], [-1.9, -0.5], [-2.0, -2.0], [-0.5, -1.0]]
+			index = random.randrange(0, 10)
+			x = goal_pose_list[index][0]
+			y = goal_pose_list[index][1]
+			print("Goal pose: ", x, y)
 
 		self.get_logger().info("New goal")
 		#self.get_logger().info("New goal: (x,y) : " + str(x) + "," +str(y))
@@ -334,8 +332,8 @@ class Pic4rlEnvironment(Node):
 			else:
 				scan_range.append(laserscan_msg.ranges[i])
 
-		self.min_obstacle_distance = min(self.scan_range)
-		self.min_obstacle_angle = np.argmin(self.scan_range)
+		self.min_obstacle_distance = min(scan_range)
+		self.min_obstacle_angle = np.argmin(scan_range)
 
 		return scan_range
 
