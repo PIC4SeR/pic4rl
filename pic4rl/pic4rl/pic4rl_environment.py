@@ -76,6 +76,9 @@ class Pic4rlEnvironment(Node):
 		self.previous_twist = None
 		self.previous_pose = Odometry()
 
+		self.stage = 1
+		self.lidar_points = 10
+		
 		#test variable
 		self.step_flag = False
 		self.twist_received = None
@@ -96,8 +99,8 @@ class Pic4rlEnvironment(Node):
 	def step(self, action):
 		twist = Twist()
 		twist.linear.x = float(action[0])
-		twist.linear.y = float(action[1])
-		twist.angular.z = float(action[2])
+		#twist.linear.y = float(action[1])
+		twist.angular.z = float(action[1])
 		observation, reward, done = self._step(twist)
 		info = None
 		return observation, reward, done, info
@@ -219,19 +222,66 @@ class Pic4rlEnvironment(Node):
 		return False, "None"
 
 	def get_observation(self, twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw):
+		state_list = []
+		state_list.append(float(goal_distance))
 
-		return np.array([goal_distance, goal_angle, yaw])
+		state_list.append(float(goal_angle))
+
+		#state_list.append(float(self.min_obstacle_distance))
+		#state_list.append(float(self.min_obstacle_angle))
+		for point in lidar_measurements:
+			state_list.append(float(point))
+			#print(point)
+
+		#return np.array([goal_distance, goal_angle, lidar_measurements])
+		return state_list
 
 	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
-		reward = self.previous_goal_distance - goal_distance
+		
+		yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))
+        #yaw_reward = - (1/(1.2*DESIRED_CTRL_HZ) - self.goal_angle)**2 +1
+        #distance_reward = 2*((2 * self.init_goal_distance) / \
+        #    (self.init_goal_distance + goal_distance) - 1)
+        
+        #distance_reward = (2 - 2**(self.goal_distance / self.init_goal_distance))
+        distance_reward = (self.previous_goal_distance - goal_distance)*30
+
+        # Reward for avoiding obstacles
+        if self.min_obstacle_distance < 0.25:
+            obstacle_reward = -2
+        else:
+            obstacle_reward = 0
+        
+        reward = yaw_reward + distance_reward + obstacle_reward
+
+
 		if event == "goal":
 			reward+=10
+		elif event == "collision"
+			reward += -10
+		elif event == "timeout"
+			reward += -10
 		self.get_logger().debug(str(reward))
+
+		print(
+			"Reward:", reward,
+			"Yaw r:", yaw_reward,
+			"Distance r:", distance_reward,
+			"Obstacle r:", obstacle_reward)
 		return reward
 
 	def get_goal(self):
-		x = random.uniform(-3,3)
-		y = random.uniform(-3,3)
+        if self.stage != 4:
+            x = random.randrange(-15, 16) / 10.0
+            y = random.randrange(-15, 16) / 10.0
+        else:
+            goal_pose_list = [[1.0, 0.0], [2.0, -1.5], [0.0, -2.0], [2.0, 2.0], [0.8, 2.0],
+                              [-1.9, 1.9], [-1.9, 0.2], [-1.9, -0.5], [-2.0, -2.0], [-0.5, -1.0]]
+            index = random.randrange(0, 10)
+            x = goal_pose_list[index][0]
+            y = goal_pose_list[index][1]
+            print("Goal pose: ", x, y)
+
 		self.get_logger().info("New goal")
 		#self.get_logger().info("New goal: (x,y) : " + str(x) + "," +str(y))
 		self.goal_pose_x = x
@@ -276,13 +326,17 @@ class Pic4rlEnvironment(Node):
 		scan_range = []
 
 		# Takes only sensed measurements
-		for i in range(359):
+		for i in range(self.lidar_points):
 			if laserscan_msg.ranges[i] == float('Inf'):
 				scan_range.append(3.50)
 			elif np.isnan(laserscan_msg.ranges[i]):
 				scan_range.append(0.00)
 			else:
 				scan_range.append(laserscan_msg.ranges[i])
+
+		self.min_obstacle_distance = min(self.scan_range)
+		self.min_obstacle_angle = np.argmin(self.scan_range)
+
 		return scan_range
 
 	def process_laserscan(self,laserscan_msg):
@@ -345,13 +399,13 @@ class Pic4rlEnvironment(Node):
 
 def main(args=None):
 	rclpy.init()
-	omnirob_rl_environment = OmnirobRlEnvironment()
-	omnirob_rl_environment.spin()
+	pic4rl_environment = Pic4rlEnvironment()
+	pic4rl_environment.spin()
 
-	omnirob_rl_environment.get_logger().info('Node spinning ...')
-	rclpy.spin_once(omnirob_rl_environment)
+	pic4rl_environment.get_logger().info('Node spinning ...')
+	rclpy.spin_once(pic4rl_environment)
 
-	omnirob_rl_environment.destroy()
+	pic4rl_environment.destroy()
 	rclpy.shutdown()
 
 if __name__ == '__main__':
