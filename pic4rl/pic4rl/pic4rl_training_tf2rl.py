@@ -60,8 +60,10 @@ import math
 import time
 
 from gym import spaces
-import gym
 
+import gym
+from tf2rl.algos.ddpg import DDPG
+from tf2rl.experiments.trainer import Trainer
 from pic4rl.pic4rl_environment import Pic4rlEnvironment
 
 class Pic4rlTraining(Pic4rlEnvironment):

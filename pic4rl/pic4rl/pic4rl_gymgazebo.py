@@ -1,44 +1,176 @@
 #!/usr/bin/env python3
-#
-# Copyright 2019 ROBOTIS CO., LTD.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# Authors: Ryan Shim, Gilbert
 
-import os
-import random
-import sys
-import time
+"""
+This class is to be inherited by all the pic4rl enviornments  
+	Ros
+	Gym
+	Rl related
+	Sensors
+	Gazebo 
+"""
 
-from gazebo_msgs.srv import DeleteEntity
-from gazebo_msgs.srv import SpawnEntity
-from geometry_msgs.msg import Pose
 import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile
-from std_srvs.srv import Empty
-from geometry_msgs.msg import Twist
-from pic4rl_msgs.srv import State, Reset, Step
-from nav_msgs.msg import Odometry
-from sensor_msgs.msg import LaserScan
-import numpy as np
-import math 
+
+from pic4rl_sensors.Sensor import OdomSensor, LaserScanSensor
 
 
-from rclpy.qos import QoSProfile
 
-class Pic4rlEnvironment(gym.Env, Node):
+class Pic4rlGymGazEnv(Node):
+	def __init__(self,
+				#sensors
+				odom = False,
+				lidar = False):
+
+		super().__init__('Pic4rlGymGazEnv')
+
+		self.__init__gazebo()
+
+		self.odom = odom
+		self.lidar = lidar
+
+		self.__init__sensors()
+
+	"""################
+	# gym related
+	################"""
+
+	def step():
+		"""
+		This method should provide the command to be sent to gazebo
+		and handled interanlly via gazebo_step method
+		"""
+
+		raise NotImplementedError
+
+	def reset():
+
+		raise NotImplementedError
+
+	def get_reward():
+
+		raise NotImplementedError
+
+	def render():
+		pass
+		#raise NotImplementedError
+
+	def define_action_space():
+		"""
+		Here should be defined all actions:
+		e.g. angular eand linear velocites with related bounding box
+		"""
+
+		raise NotImplementedError
+
+	def define_state_space():
+		"""
+		Here should be defined all variables componing the state
+		(Also previous step state should be included)
+		Both internal and external (e.g. sensors)
+		"""
+
+		raise NotImplementedError
+
+	def update_state():
+
+		raise NotImplementedError
+
+	def reset_state():
+
+		raise NotImplementedError
+
+		
+	"""################
+	# Ros 
+	################"""
+	
+	def gazebo_step():
+
+		raise NotImplementedError
+
+
+	def spin_with_timeout(node = self, timeout_sec):
+		"""This function provides a way to spin only for a certain
+		amount of time"""
+		rclpy.spin_until_future_complete(node,rclpy.Future(),timeout_sec=timeout_sec)
+
+
+	"""################
+	# Rl related
+	################"""
+
+	"""################
+	# Sensors
+	################"""
+
+	def __init__sensors(self):
+
+		if self.odom:
+			odom_sensor = OdomSensor()
+			self.create_subscription(*odom_sensor.add_subscription())
+
+		if self.lidar:
+			lidar_sensor = OdomSensor()
+			self.create_subscription(*odom_sensor.add_subscription())
+
+	"""################
+	# Gazebo services
+	################"""
+
+	def __init__gazebo(self):
+
+		# Service clients
+        self.delete_entity_client = self.create_client(DeleteEntity, 'delete_entity')
+        self.spawn_entity_client = self.create_client(SpawnEntity, 'spawn_entity')
+        self.reset_simulation_client = self.create_client(Empty, 'reset_simulation')
+        self.reset_world_client = self.create_client(Empty, 'reset_world')
+        self.pause_physics_client = self.create_client(Empty, 'pause_physics')
+        self.unpause_physics_client = self.create_client(Empty, 'unpause_physics')
+
+    def pause(self):
+        req = Empty.Request()
+        while not self.pause_physics_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        self.pause_physics_client.call_async(req) 
+
+    def unpause(self):
+        req = Empty.Request()
+        while not self.unpause_physics_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        self.unpause_physics_client.call_async(req) 
+
+    def delete_entity(self, entity_name):
+        req = DeleteEntity.Request()
+        #req.name = self.entity_name
+        req.name = entity_name
+        while not self.delete_entity_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+
+        self.delete_entity_client.call_async(req)
+        self.get_logger().debug('Entity deleting request sent ...')
+
+    def spawn_entity(self,pose = None, name = None, entity_path = None, entity = None):
+        if not pose:
+            pose = Pose()
+        req = SpawnEntity.Request()
+        req.name = name
+        if entity_path:
+            entity = open(entity_path, 'r').read()
+        req.xml = entity
+        req.initial_pose = pose
+        while not self.spawn_entity_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        self.spawn_entity_client.call_async(req)
+
+    def reset_world(self):
+        req = Empty.Request()
+        while not self.reset_world_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        self.reset_world_client.call_async(req)    
+        #time.sleep(1)
+
+
+class Pic4rlEnvironment(Node):
 	def __init__(self):
 		super().__init__('pic4rl_environment')
 		# To see debug logs
