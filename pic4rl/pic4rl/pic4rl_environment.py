@@ -20,6 +20,7 @@ import os
 import random
 import sys
 import time
+import tensorflow as tf
 
 from gazebo_msgs.srv import DeleteEntity
 from gazebo_msgs.srv import SpawnEntity
@@ -27,13 +28,19 @@ from geometry_msgs.msg import Pose
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
+from rclpy.qos import qos_profile_sensor_data
 from std_srvs.srv import Empty
 from geometry_msgs.msg import Twist
 from pic4rl_msgs.srv import State, Reset, Step
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import Image
 import numpy as np
-import math 
+import math
+
+from numpy import savetxt
+import cv2
+from cv_bridge import CvBridge
 
 
 from rclpy.qos import QoSProfile
@@ -53,6 +60,12 @@ class Pic4rlEnvironment(Node):
 			Twist,
 			'cmd_vel',
 			qos)
+
+		self.Image_sub = self.create_subscription(
+			Image,
+            '/intel_realsense_r200_depth/depth/image_raw',
+            self.DEPTH_callback,
+            qos_profile=qos_profile_sensor_data)
 
 		# Initialise client
 		#self.send_twist = self.create_client(Twist, 'send_twist')
@@ -77,8 +90,9 @@ class Pic4rlEnvironment(Node):
 		self.previous_pose = Odometry()
 
 		self.stage = 1
-		self.lidar_points = 10
-		
+		self.lidar_points = 359
+		#self.depth_image = np.zeros((240,320), np.uint8)
+		self.bridge = CvBridge()		
 		#test variable
 		self.step_flag = False
 		self.twist_received = None
@@ -116,9 +130,7 @@ class Pic4rlEnvironment(Node):
 			state = self.get_state()
 			data_received = state.data_received
 
-
-
-		lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw = self.process_state(state)
+		lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image = self.process_state(state)
 
 		# Check events (failure,timeout, success)
 		done, event = self.check_events(lidar_measurements, goal_distance, self.episode_step)
@@ -126,7 +138,7 @@ class Pic4rlEnvironment(Node):
 		if not reset_step:
 			# Get reward
 			reward = self.get_reward(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event)
-			observation = self.get_observation(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw)
+			observation = self.get_observation(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image)
 		else:
 			reward = None
 			observation = None
@@ -194,11 +206,16 @@ class Pic4rlEnvironment(Node):
 
 		#from LaserScan msg to 359 len filterd list
 		lidar_measurements = self.filter_laserscan(state.scan)
+		#from 359 filtered lidar points to 60 selected lidar points
+		lidar_measurements = self.process_laserscan(lidar_measurements)
 
 		#from Odometry msg to x,y, yaw, distance, angle wrt goal
 		goal_distance, goal_angle, pos_x, pos_y, yaw = self.process_odom(state.odom)
 
-		return lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw
+		#process Depth Image from sensor msg
+		depth_image = self.process_depth_image()
+
+		return lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image
 
 	def check_events(self, lidar_measurements, goal_distance, step):
 
@@ -221,32 +238,41 @@ class Pic4rlEnvironment(Node):
 
 		return False, "None"
 
-	def get_observation(self, twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw):
+	def get_observation(self, twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw,depth_image):
 		state_list = []
-		state_list.append(float(goal_distance))
-
-		state_list.append(float(goal_angle))
+		#state_list.append(float(goal_distance))
+		#state_list.append(float(goal_angle))
 
 		#state_list.append(float(self.min_obstacle_distance))
 		#state_list.append(float(self.min_obstacle_angle))
-		for point in lidar_measurements:
-			state_list.append(float(point))
+		#for point in lidar_measurements:
+		#	state_list.append(float(point))
 			#print(point)
 
 		#return np.array([goal_distance, goal_angle, lidar_measurements])
+
+		state_list.append(float(self.goal_distance)*np.ones(self.image_size))
+		state_list.append(float(self.goal_angle)*np.ones(self.image_size))
+		state_list.append(depth_image)
+		state_list = np.stack(state_list)
+		state_list = tf.convert_to_tensor(state_list, dtype=tf.float32)
+		state_list = tf.reshape(state_list, [224,224,3])
+		#print('state size', state_list.shape)
+		#print('STATE', state_list)
+
 		return state_list
 
 	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
-		yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))
+		yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.6
         #yaw_reward = - (1/(1.2*DESIRED_CTRL_HZ) - self.goal_angle)**2 +1
-        #distance_reward = 2*((2 * self.init_goal_distance) / \
-        #    (self.init_goal_distance + goal_distance) - 1)
-        #distance_reward = (2 - 2**(self.goal_distance / self.init_goal_distance))
+		#distance_reward = 2*((2 * self.previous_goal_distance) / \
+		#	(self.previous_goal_distance + goal_distance) - 1)
+		#distance_reward = (2 - 2**(self.goal_distance / self.init_goal_distance))
 		distance_reward = (self.previous_goal_distance - goal_distance)*30
 
         # Reward for avoiding obstacles
 		if self.min_obstacle_distance < 0.25:
-			obstacle_reward = -2
+			obstacle_reward = -2.5
 		else:
 			obstacle_reward = 0
         
@@ -254,18 +280,18 @@ class Pic4rlEnvironment(Node):
 
 
 		if event == "goal":
-			reward+=10
+			reward += 50
 		elif event == "collision":
 			reward += -10
 		elif event == "timeout":
 			reward += -10
 		self.get_logger().debug(str(reward))
 
-		print(
-			"Reward:", reward,
-			"Yaw r:", yaw_reward,
-			"Distance r:", distance_reward,
-			"Obstacle r:", obstacle_reward)
+		#print(
+		#	"Reward:", reward,
+		#	"Yaw r:", yaw_reward,
+		#	"Distance r:", distance_reward,
+		#	"Obstacle r:", obstacle_reward)
 		return reward
 
 	def get_goal(self):
@@ -332,14 +358,80 @@ class Pic4rlEnvironment(Node):
 			else:
 				scan_range.append(laserscan_msg.ranges[i])
 
-		self.min_obstacle_distance = min(scan_range)
-		self.min_obstacle_angle = np.argmin(scan_range)
-
 		return scan_range
 
-	def process_laserscan(self,laserscan_msg):
+	def process_laserscan(self,lidar_pointlist):
 
-		pass
+		scan_range_process = []
+		min_dist_point = 100
+		# Takes only 60 lidar points
+		for i in range(self.lidar_points):
+			if lidar_pointlist[i] < min_dist_point:
+				min_dist_point = lidar_pointlist[i]
+			if i % 6 == 0:
+				scan_range_process.append(min_dist_point)
+				min_dist_point = 100
+		#print('selected lidar points:', len(scan_range_process))
+		# this should be computed with the depth image !!!
+		self.min_obstacle_distance = min(scan_range_process)
+		self.min_obstacle_angle = np.argmin(scan_range_process)
+
+		return scan_range_process
+ 
+	def DEPTH_callback(self, msg):
+		depth_image_raw = np.zeros((240,320), np.uint8)
+		depth_image_raw = self.bridge.imgmsg_to_cv2(msg, '32FC1')
+		self.depth_image_raw = np.array(depth_image_raw, dtype= np.float32)
+		#savetxt('/home/maurom/depth_images/text_depth_image_raw.csv', depth_image_raw, delimiter=',')
+		#np.save('/home/maurom/depth_images/depth_image.npy', depth_image_raw)
+		#cv2.imwrite('/home/maurom/depth_images/d_img_01.png', self.depth_image_raw)
+
+	def process_depth_image(self):
+		depth_image = self.depth_to_net_dim(self.depth_image_raw)
+		#depth_image = np.array(depth_image, dtype= np.float32)
+		#savetxt('/home/maurom/depth_images/text_depth_image.csv', depth_image, delimiter=',')
+		#print('image shape: ', depth_image.shape)
+
+		#check crop is performed correctly
+		img = tf.convert_to_tensor(depth_image, dtype=tf.float32)
+		img = tf.reshape(img, [240,320,1])
+		width = 224
+		height = 224
+		img_crop = tf.image.crop_to_bounding_box(img, 2, 48, width,height)
+		img_crop = tf.reshape(img_crop, [width,height])
+		depth_image = np.asarray(img_crop, dtype= np.float32)
+		#cv2.imwrite('/home/maurom/depth_images/d_img_crop.png', img_crop)
+		self.image_size = depth_image.shape
+		return depth_image
+
+	def depth_to_3ch(self,img, cutoff):
+        #Useful to turn the background into black into the depth images.
+		w,h = img.shape
+		new_img = np.zeros([w,h,3])
+		img = img.flatten()
+		img[img>cutoff] = 0.0 
+		img = img.reshape([w,h])
+        #for i in range(3):
+        #    new_img[:,:,i] = img 
+		return img
+
+	def depth_scaled_to_255(self,img):
+		assert np.max(img) > 0.0 
+		img = 255.0/np.max(img)*img
+		img = np.array(img,dtype=np.uint8)
+		img = cv2.equalizeHist(img)
+        #for i in range(3):
+        #    img[:,:,i] = cv2.equalizeHist(img[:,:,i])
+		return img 
+
+	def depth_to_net_dim(self,img):
+        #Careful if the cutoff is in meters or millimeters!
+		cutoff = 3.5
+		img = self.depth_to_3ch(img, cutoff) # all values above 255 turned to white
+		#cv2.imwrite('/home/maurom/depth_images/d_img_02.png', img) 
+		img = self.depth_scaled_to_255(img) # correct scaling to be in [0,255) now
+		#cv2.imwrite('/home/maurom/depth_images/d_img_03.png', img) 
+		return img
 
 	def process_odom(self, odom_msg):
 		#self.previous_pose.pose.pose.position.x = odom_msg.pose.pose.position.x
