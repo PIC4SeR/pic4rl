@@ -10,18 +10,30 @@ This class is to be inherited by all the pic4rl enviornments
 """
 
 import rclpy
+from rclpy.node import Node
+
+from gazebo_msgs.srv import DeleteEntity, SpawnEntity
+from std_srvs.srv import Empty
 
 from pic4rl_sensors.Sensor import OdomSensor, LaserScanSensor
 
+import numpy as np
 
+import time 
+import collections
 
 class Pic4rlGymGazEnv(Node):
-	def __init__(self,
-				#sensors
-				odom = False,
-				lidar = False):
+	def __init__(self,odom = False,lidar = False):
 
 		super().__init__('Pic4rlGymGazEnv')
+
+		self.state_history = collections.deque(maxlen=2)
+		self.observation_history = collections.deque(maxlen=2)
+		self.state = {}
+		self.observation  = {}
+
+		#rclpy.logging.set_logger_level('Pic4rlGymGazEnv', 10)
+		self.__init__gym()
 
 		self.__init__gazebo()
 
@@ -34,27 +46,90 @@ class Pic4rlGymGazEnv(Node):
 	# gym related
 	################"""
 
-	def step():
-		"""
-		This method should provide the command to be sent to gazebo
+	def __init__gym(self):
+		#self.action_space = spaces.Box()
+		#self.observation_space = spaces.Box()
+		pass
+
+	def step(self,action):
+		"""This method should provide the command to be sent to gazebo
 		and handled interanlly via gazebo_step method
 		"""
+		self.get_logger().debug("unpausing...")
+		self.unpause()
+		self.get_logger().debug("publishing twist...")
+
+		self._step(action)
+
+		self.spin_with_timeout()
+		self.get_logger().debug("pausing...")
+		self.pause()	
+
+		self.update_state() # Take new data from sensor, clean them 
+
+		observation, done = self.get_observation()
+		reward = self.get_reward()
+		info = None
+
+		return observation, reward, done, info
+
+	def _step(self, action):
+		"""
+		This method must be implemented in the specific 
+		environment
+		e.g. for mobile robots it should publish a 
+		twist message over /cmd_vel topic, hence 
+		mapping the action from the rl agent to 
+		the twist message
+		"""
 
 		raise NotImplementedError
 
-	def reset():
+	def reset(self):
+		self.get_logger().debug("Reset request received ...")
+		self.get_logger().debug("Resetting world ...")
+		self.reset_state()
+		self.reset_world()
+		self.get_goal()
+		data_retrieved = False
+		while not data_retrieved:
+			self.unpause()
+			self.spin_with_timeout()
+			self.pause()	
+			try:
+				for sensor in self.sensors:
+					sensor.data
+				data_retrieved = True
+			except:
+				self.get_logger().debug("Waiting for data...")
+				pass
+		self.update_state()
+		observation = self.get_only_observation()
+		self.observation_history.append(self.observation.copy())
+		return observation
+		#self.respawn_entity(request.goal_pos_x, request.goal_pos_y)
+
+	def get_reward(self):
+
+		raise NotImplementedError
+	
+	def get_observation(self):
 
 		raise NotImplementedError
 
-	def get_reward():
+	def get_only_observation(self):
 
 		raise NotImplementedError
 
-	def render():
+	def get_goal(self):
+
+		raise NotImplementedError
+
+	def render(self):
 		pass
 		#raise NotImplementedError
 
-	def define_action_space():
+	def define_action_space(self):
 		"""
 		Here should be defined all actions:
 		e.g. angular eand linear velocites with related bounding box
@@ -62,7 +137,7 @@ class Pic4rlGymGazEnv(Node):
 
 		raise NotImplementedError
 
-	def define_state_space():
+	def define_state_space(self):
 		"""
 		Here should be defined all variables componing the state
 		(Also previous step state should be included)
@@ -71,29 +146,71 @@ class Pic4rlGymGazEnv(Node):
 
 		raise NotImplementedError
 
-	def update_state():
+	def update_state(self):
+		for sensor in self.sensors:
+			processes_data = sensor.process_data()
+			try:
+				for key in processes_data.keys(): #Remove previous data
+					self.state.pop(key) #I don't use .clean because 
+										# I don't wanna lose goal related info
+			except KeyError:
+				pass #first time an error rise
+			self.state.update(processes_data)
 
-		raise NotImplementedError
+		self.state_history.append(self.state.copy())
 
-	def reset_state():
 
-		raise NotImplementedError
+
+	def uupdate_state(self):
+		print("ççççççççççççççççççççççççççççççççççò")
+		try:
+			print("PRIMA " +str(self.state['odom_pos_x']))
+		except:
+			pass
+		for sensor in self.sensors:
+			processes_data = sensor.process_data()
+			print("0_______")
+			print(processes_data.keys())
+			
+			print("1_______")
+			print(self.state.keys())
+			try:
+				for key in processes_data.keys(): #Remove previous data
+					self.state.pop(key) #I don't use .clean because 
+										# I don't wanna lose goal related info
+			except KeyError:
+				pass #first time an error rise
+			print("2_______")
+			print(self.state.keys())
+			self.state.update(processes_data)
+			print("3_______")
+			print(self.state.keys())
+		self.state_history.append(self.state)
+
+		try:
+			print(self.state_history[0]["odom_pos_x"])
+			print(self.state_history[1]["odom_pos_x"])
+		except:
+			pass
+		print("DOPO " +str(self.state['odom_pos_x']))
+
+	def reset_state(self):
+		for sensor in self.sensors:
+			del sensor.data
 
 		
 	"""################
 	# Ros 
 	################"""
-	
-	def gazebo_step():
 
-		raise NotImplementedError
-
-
-	def spin_with_timeout(node = self, timeout_sec):
+	def spin_with_timeout(self,	timeout_sec = 0.1):
 		"""This function provides a way to spin only for a certain
 		amount of time"""
-		rclpy.spin_until_future_complete(node,rclpy.Future(),timeout_sec=timeout_sec)
-
+		start = time.time()
+		self.get_logger().debug("Spinning")
+		rclpy.spin_until_future_complete(self,rclpy.Future(),timeout_sec=timeout_sec)
+		debug_string = "Spinned for " + str(time.time()-start)
+		self.get_logger().debug(debug_string)
 
 	"""################
 	# Rl related
@@ -104,14 +221,21 @@ class Pic4rlGymGazEnv(Node):
 	################"""
 
 	def __init__sensors(self):
+		self.sensors = []
 
 		if self.odom:
 			odom_sensor = OdomSensor()
 			self.create_subscription(*odom_sensor.add_subscription())
+			self.sensors.append(odom_sensor)
 
 		if self.lidar:
-			lidar_sensor = OdomSensor()
-			self.create_subscription(*odom_sensor.add_subscription())
+			lidar_sensor = LaserScanSensor()
+			self.create_subscription(*lidar_sensor.add_subscription())
+			self.sensors.append(lidar_sensor)
+
+		print("Following sensors are used:")
+		for sensor in self.sensors:
+			print(sensor.name)
 
 	"""################
 	# Gazebo services
@@ -120,279 +244,18 @@ class Pic4rlGymGazEnv(Node):
 	def __init__gazebo(self):
 
 		# Service clients
-        self.delete_entity_client = self.create_client(DeleteEntity, 'delete_entity')
-        self.spawn_entity_client = self.create_client(SpawnEntity, 'spawn_entity')
-        self.reset_simulation_client = self.create_client(Empty, 'reset_simulation')
-        self.reset_world_client = self.create_client(Empty, 'reset_world')
-        self.pause_physics_client = self.create_client(Empty, 'pause_physics')
-        self.unpause_physics_client = self.create_client(Empty, 'unpause_physics')
-
-    def pause(self):
-        req = Empty.Request()
-        while not self.pause_physics_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        self.pause_physics_client.call_async(req) 
-
-    def unpause(self):
-        req = Empty.Request()
-        while not self.unpause_physics_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        self.unpause_physics_client.call_async(req) 
-
-    def delete_entity(self, entity_name):
-        req = DeleteEntity.Request()
-        #req.name = self.entity_name
-        req.name = entity_name
-        while not self.delete_entity_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-
-        self.delete_entity_client.call_async(req)
-        self.get_logger().debug('Entity deleting request sent ...')
-
-    def spawn_entity(self,pose = None, name = None, entity_path = None, entity = None):
-        if not pose:
-            pose = Pose()
-        req = SpawnEntity.Request()
-        req.name = name
-        if entity_path:
-            entity = open(entity_path, 'r').read()
-        req.xml = entity
-        req.initial_pose = pose
-        while not self.spawn_entity_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        self.spawn_entity_client.call_async(req)
-
-    def reset_world(self):
-        req = Empty.Request()
-        while not self.reset_world_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        self.reset_world_client.call_async(req)    
-        #time.sleep(1)
-
-
-class Pic4rlEnvironment(Node):
-	def __init__(self):
-		super().__init__('pic4rl_environment')
-		# To see debug logs
-		#rclpy.logging.set_logger_level('omnirob_rl_environment', 10)
-
-		"""************************************************************
-		** Initialise ROS publishers and subscribers
-		************************************************************"""
-		qos = QoSProfile(depth=10)
-
-		self.cmd_vel_pub = self.create_publisher(
-			Twist,
-			'cmd_vel',
-			qos)
-
-		# Initialise client
-		#self.send_twist = self.create_client(Twist, 'send_twist')
-
-		#self.task_succeed_client = self.create_client(Empty, 'task_succeed')
-		#self.task_fail_client = self.create_client(Empty, 'task_fail')
-
+		self.delete_entity_client = self.create_client(DeleteEntity, 'delete_entity')
+		self.spawn_entity_client = self.create_client(SpawnEntity, 'spawn_entity')
+		self.reset_simulation_client = self.create_client(Empty, 'reset_simulation')
+		self.reset_world_client = self.create_client(Empty, 'reset_world')
 		self.pause_physics_client = self.create_client(Empty, 'pause_physics')
 		self.unpause_physics_client = self.create_client(Empty, 'unpause_physics')
-
-		self.get_state_client = self.create_client(State, 'get_state')
-		self.new_episode_client = self.create_client(Reset, 'new_episode')
-
-		"""##########
-		State variables
-		##########"""
-		self.init_step = True
-		self.episode_step = 0
-		self.goal_pos_x = None
-		self.goal_pos_y = None
-		self.previous_twist = None
-		self.previous_pose = Odometry()
-
-		#test variable
-		self.step_flag = False
-		self.twist_received = None
-
-
-		"""##########
-		Environment initialization
-		##########"""
-
-	"""#############
-	Main functions
-	#############"""
-
-	def render(self):
-
-		pass
-
-	def step(self, action):
-		twist = Twist()
-		twist.linear.x = float(action[0])
-		twist.linear.y = float(action[1])
-		twist.angular.z = float(action[2])
-		observation, reward, done = self._step(twist)
-		info = None
-		return observation, reward, done, info
-
-	def _step(self, twist=Twist(), reset_step = False):
-		#After environment reset sensors data are not instaneously available
-		#that's why there's the while. A timer could be added to increase robustness
-		data_received = False
-		while not data_received:
-			# Send action
-			self.send_action(twist)
-			# Get state
-			state = self.get_state()
-			data_received = state.data_received
-
-
-
-		lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw = self.process_state(state)
-
-		# Check events (failure,timeout, success)
-		done, event = self.check_events(lidar_measurements, goal_distance, self.episode_step)
-
-		if not reset_step:
-			# Get reward
-			reward = self.get_reward(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event)
-			observation = self.get_observation(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw)
-		else:
-			reward = None
-			observation = None
-
-		# Send observation and reward
-		self.update_state(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event)
-
-		return  observation, reward, done
-
-	def reset(self):
-		#self.destroy_subscription('cmd_vel')
-		req = Reset.Request()
-		req.goal_pos_x,req.goal_pos_y = self.get_goal()
-		self.get_logger().info("Environment reset ...")
-
-		while not self.new_episode_client.wait_for_service(timeout_sec=1.0):
-			self.get_logger().info('service not available, waiting again...')
-		future = self.new_episode_client.call_async(req)
-		#self.get_logger().debug("Reset env request sent ...")
-		#rclpy.spin_until_future_complete(self, future,timeout_sec=1.0)
-		#time_start = time.time()
-		while rclpy.ok():
-			rclpy.spin_once(self,timeout_sec=2)
-			if future.done():
-				if future.result() is not None:
-					self.get_logger().debug("Environment reset done")
-					break 
-			#if  time.time() - time_start > 10:
-			#	raise ValueError("In realtà non è un ValueError")
-			
-	
-		self.get_logger().debug("Performing null step to reset variables")
-		_,_,_, = self._step(reset_step = True)
-		observation,_,_, = self._step()
-		return observation
-
-	"""#############
-	Secondary functions (used in main functions)
-	#############"""
-
-	def send_action(self,twist):
-		self.get_logger().debug("unpausing...")
-		self.unpause()
-		self.get_logger().debug("publishing twist...")
-		self.cmd_vel_pub.publish(twist)
-		time.sleep(0.1)
-		self.get_logger().debug("pausing...")
-		self.pause()	
-
-	def get_state(self):
-		self.get_logger().debug("Asking for the state...")
-		req = State.Request()
-		future =self.get_state_client.call_async(req)
-		rclpy.spin_until_future_complete(self, future)
-		try:
-			state = future.result()
-		except Exception as e:
-			node.get_logger().error('Service call failed %r' % (e,))
-		self.get_logger().debug("State received ...")
-		return state
-
-	def process_state(self,state):
-
-		self.episode_step += 1
-
-		#from LaserScan msg to 359 len filterd list
-		lidar_measurements = self.filter_laserscan(state.scan)
-
-		#from Odometry msg to x,y, yaw, distance, angle wrt goal
-		goal_distance, goal_angle, pos_x, pos_y, yaw = self.process_odom(state.odom)
-
-		return lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw
-
-	def check_events(self, lidar_measurements, goal_distance, step):
-
-		min_range = 0.26
-
-		if  0.05 <min(lidar_measurements) < min_range:
-			# Collision
-			self.get_logger().info('Collision')
-			return True, "collision"
-
-		if goal_distance < 0.2:
-			# Goal reached
-			self.get_logger().info('Goal')
-			return True, "goal"
-
-		if step >= 500:
-			#Timeout
-			self.get_logger().info('Timeout')
-			return True, "timeout"
-
-		return False, "None"
-
-	def get_observation(self, twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw):
-
-		return np.array([goal_distance, goal_angle, yaw])
-
-	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
-		reward = self.previous_goal_distance - goal_distance
-		if event == "goal":
-			reward+=10
-		self.get_logger().debug(str(reward))
-		return reward
-
-	def get_goal(self):
-		x = random.uniform(-3,3)
-		y = random.uniform(-3,3)
-		self.get_logger().info("New goal")
-		#self.get_logger().info("New goal: (x,y) : " + str(x) + "," +str(y))
-		self.goal_pose_x = x
-		self.goal_pose_y = y
-		return x,y
-
-	def update_state(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
-		#Here state variables are updated
-		self.episode_step += 1
-		self.previous_twist = twist
-		self.previous_lidar_measurements = lidar_measurements
-		self.previous_goal_distance = goal_distance
-		self.previous_goal_angle = goal_angle
-		self.previous_pos_x = pos_x
-		self.previous_pos_y = pos_y
-		self.previous_yaw = yaw
-		# If done, set flag for resetting everything at next step
-		if done:
-			self.init_step = True
-			self.episode_step = 0
-
-	"""#############
-	Auxiliar functions (used in secondary functions)
-	#############"""
 
 	def pause(self):
 		req = Empty.Request()
 		while not self.pause_physics_client.wait_for_service(timeout_sec=1.0):
 			self.get_logger().info('service not available, waiting again...')
+		
 		self.pause_physics_client.call_async(req) 
 
 	def unpause(self):
@@ -401,78 +264,35 @@ class Pic4rlEnvironment(Node):
 			self.get_logger().info('service not available, waiting again...')
 		self.unpause_physics_client.call_async(req) 
 
-	def filter_laserscan(self,laserscan_msg):
-		# There are some outliers (0 or nan values, they all are set to 0) that will not be passed to the DRL agent
+	def delete_entity(self, entity_name):
+		req = DeleteEntity.Request()
+		#req.name = self.entity_name
+		req.name = entity_name
+		while not self.delete_entity_client.wait_for_service(timeout_sec=1.0):
+			self.get_logger().info('service not available, waiting again...')
 
-		# Correct data:
-		scan_range = []
+		self.delete_entity_client.call_async(req)
+		self.get_logger().debug('Entity deleting request sent ...')
 
-		# Takes only sensed measurements
-		for i in range(359):
-			if laserscan_msg.ranges[i] == float('Inf'):
-				scan_range.append(3.50)
-			elif np.isnan(laserscan_msg.ranges[i]):
-				scan_range.append(0.00)
-			else:
-				scan_range.append(laserscan_msg.ranges[i])
-		return scan_range
+	def spawn_entity(self,pose = None, name = None, entity_path = None, entity = None):
+		if not pose:
+			pose = Pose()
+		req = SpawnEntity.Request()
+		req.name = name
+		if entity_path:
+			entity = open(entity_path, 'r').read()
+		req.xml = entity
+		req.initial_pose = pose
+		while not self.spawn_entity_client.wait_for_service(timeout_sec=1.0):
+			self.get_logger().info('service not available, waiting again...')
+		self.spawn_entity_client.call_async(req)
 
-	def process_laserscan(self,laserscan_msg):
-
-		pass
-
-	def process_odom(self, odom_msg):
-		#self.previous_pose.pose.pose.position.x = odom_msg.pose.pose.position.x
-		#self.previous_pose.pose.pose.position.y = odom_msg.pose.pose.position.y
-
-		pos_x = odom_msg.pose.pose.position.x
-		pos_y = odom_msg.pose.pose.position.y
-		_,_,yaw = self.euler_from_quaternion(odom_msg.pose.pose.orientation)
-
-		goal_distance = math.sqrt(
-			(self.goal_pose_x-pos_x)**2
-			+ (self.goal_pose_y-pos_y)**2)
-
-		path_theta = math.atan2(
-			self.goal_pose_y-pos_y,
-			self.goal_pose_x-pos_x)
-
-		goal_angle = path_theta - yaw
-
-		if goal_angle > math.pi:
-			goal_angle -= 2 * math.pi
-
-		elif goal_angle < -math.pi:
-			goal_angle += 2 * math.pi
-
-		self.goal_distance = goal_distance
-		self.goal_angle = goal_angle
-
-		return goal_distance, goal_angle, pos_x, pos_y, yaw
-
-	def euler_from_quaternion(self, quat):
-		"""
-		Converts quaternion (w in last place) to euler roll, pitch, yaw
-		quat = [x, y, z, w]
-		"""
-		x = quat.x
-		y = quat.y
-		z = quat.z
-		w = quat.w
-
-		sinr_cosp = 2 * (w*x + y*z)
-		cosr_cosp = 1 - 2*(x*x + y*y)
-		roll = np.arctan2(sinr_cosp, cosr_cosp)
-
-		sinp = 2 * (w*y - z*x)
-		pitch = np.arcsin(sinp)
-
-		siny_cosp = 2 * (w*z + x*y)
-		cosy_cosp = 1 - 2 * (y*y + z*z)
-		yaw = np.arctan2(siny_cosp, cosy_cosp)
-
-		return roll, pitch, yaw
-
+	def reset_world(self):
+		req = Empty.Request()
+		while not self.reset_world_client.wait_for_service(timeout_sec=1.0):
+			self.get_logger().info('service not available, waiting again...')
+		self.reset_world_client.call_async(req)    
+		#time.sleep(1)
 
 
 def main(args=None):

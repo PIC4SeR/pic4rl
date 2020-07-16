@@ -24,6 +24,7 @@ setup(
         'pic4rl_gazebo = pic4rl.pic4rl_gazebo:main',
         'pic4rl_environment = pic4rl.pic4rl_environment:main',
         'pic4rl_gymgazebo = pic4rl.pic4rl_gymgazebo:main',
+        'pic4rl_turtlebot3_burger = pic4rl.pic4rl_turtlebot3_burger:main'
         ],
     },
 )
