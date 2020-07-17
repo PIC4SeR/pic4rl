@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'pic4rl'
+package_name = 'pic4rl_sensors'
 
 setup(
     name=package_name,
@@ -20,11 +20,6 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        'pic4rl_training = pic4rl.pic4rl_training:main',
-        'pic4rl_gazebo = pic4rl.pic4rl_gazebo:main',
-        'pic4rl_environment = pic4rl.pic4rl_environment:main',
-        'pic4rl_gymgazebo = pic4rl.pic4rl_gymgazebo:main',
-        'pic4rl_turtlebot3_burger = pic4rl.pic4rl_turtlebot3_burger:main'
         ],
     },
 )

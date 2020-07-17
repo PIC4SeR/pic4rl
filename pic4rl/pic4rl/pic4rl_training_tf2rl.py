@@ -31,6 +31,7 @@ from gazebo_msgs.srv import DeleteEntity
 from gazebo_msgs.srv import SpawnEntity
 from geometry_msgs.msg import Pose
 import rclpy
+from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from std_srvs.srv import Empty
 from geometry_msgs.msg import Twist
@@ -59,23 +60,112 @@ import math
 import time
 
 from gym import spaces
+
 import gym
-
-#from pic4rl.pic4rl_environment import Pic4rlEnvironment
-from pic4rl.pic4rl_turtlebot3_burger import Pic4rlTurtleBot3
-
-from tf2rl.experiments.trainer import Trainer
 from tf2rl.algos.ddpg import DDPG
+from tf2rl.experiments.trainer import Trainer
+from pic4rl.pic4rl_environment import Pic4rlEnvironment
 
-class Pic4rlTraining(Pic4rlTurtleBot3):
+class Pic4rlTraining(Pic4rlEnvironment):
 	def __init__(self):
-		#self.env = Pic4rlTurtleBot3()
 		super().__init__()
-		print(self.observation_space.shape)
+		#rclpy.logging.set_logger_level('omnirob_rl_agent', 20)
+		#rclpy.logging.set_logger_level('omnirob_rl_environment', 10)
+
+		"""************************************************************
+		** Initialise ROS publishers and subscribers
+		************************************************************"""
+		qos = QoSProfile(depth=10)
+
+		#self.env = OmnirobRlEnvironment()
 
 		self.instanciate_agent()
 
 	def instanciate_agent(self):
+		"""
+		ACTION AND OBSERVATION SPACES settings for DDPG
+		"""
+		"""
+		actions
+		"""
+		action =[
+		[-0.5, 0.5], # x_speed 
+		[-0.5, 0.5], # y_speed
+		[-1, 1] # theta_speed
+		]
+
+
+		low_action = []
+		high_action = []
+		for i in range(len(action)):
+			low_action.append(action[i][0])
+			high_action.append(action[i][1])
+
+		low_action = np.array(low_action, dtype=np.float32)
+		high_action = np.array(high_action, dtype=np.float32)
+		"""	
+		max_x_speed = 0.5
+		min_x_speed = -0.5
+		max_y_speed = 0.5
+		min_y_speed = -0.5
+		max_z_speed = 1
+		min_z_speed = -1
+
+
+		low_action = np.array(
+			[min_x_speed, min_y_speed], dtype=np.float32
+		)
+		high_action = np.array(
+			[max_x_speed, max_y_speed], dtype=np.float32
+		)
+		"""
+		#low_action = min_ang_speed
+		#high_action = max_ang_speed
+
+		self.action_space = spaces.Box(
+			low=low_action,
+			high=high_action,
+			#shape=(1,),
+			dtype=np.float32
+		)
+		
+		"""
+		state
+		"""
+		state =[
+		[0., 5.], # goal_distance 
+		[-math.pi, math.pi], # goal_angle
+		[-math.pi, math.pi] # yaw
+		]
+
+
+		low_state = []
+		high_state = []
+		for i in range(len(state)):
+			low_state.append(state[i][0])
+			high_state.append(state[i][1])
+
+		self.low_state = np.array(low_state, dtype=np.float32)
+		self.high_state = np.array(high_state, dtype=np.float32)
+		"""
+		max_goal_distance = 5.
+		min_goal_distance = 0.
+		max_goal_angle = math.pi
+		min_goal_angle = -math.pi
+		
+		self.low_state = np.array(
+			[min_goal_distance, min_goal_angle], dtype=np.float32
+		)
+		self.high_state = np.array(
+			[max_goal_distance, max_goal_angle], dtype=np.float32
+		)
+		"""
+		self.observation_space = spaces.Box(
+			low=self.low_state,
+			high=self.high_state,
+			dtype=np.float32
+		)
+
 		parser = Trainer.get_argument()
 		parser = DDPG.get_argument(parser)
 		args = parser.parse_args()
@@ -100,11 +190,11 @@ def main(args=None):
 	rclpy.init()
 	pic4rl_training= Pic4rlTraining()
 
-	"""pic4rl_training.get_logger().info('Node spinning ...')
+	pic4rl_training.get_logger().info('Node spinning ...')
 	rclpy.spin(pic4rl_training)
 
 	pic4rl_training.destroy()
-	rclpy.shutdown()"""
+	rclpy.shutdown()
 
 if __name__ == '__main__':
 	main()

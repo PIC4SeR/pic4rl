@@ -38,7 +38,7 @@ import math
 
 from rclpy.qos import QoSProfile
 
-class Pic4rlEnvironment(Node):
+class Pic4rlEnvironment(gym.Env, Node):
 	def __init__(self):
 		super().__init__('pic4rl_environment')
 		# To see debug logs
