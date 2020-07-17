@@ -17,7 +17,7 @@
 # Authors: Ryan Shim, Gilbert
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="-1" 
+#os.environ["CUDA_VISIBLE_DEVICES"]="-1" 
 import tensorflow as tf
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -52,6 +52,7 @@ from tensorflow.keras.layers import Input, concatenate
 from tensorflow.keras.initializers import RandomUniform, glorot_normal
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.losses import mean_squared_error
 
 import json
 import numpy as np
@@ -88,7 +89,6 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.action_size = 2 #linear velocity, angular velocity
         self.height = 224
         self.width = 224
-        self.image_shape = [224,224,3]
         self.episode_size = 5000
 
         # DDPG hyperparameter
@@ -98,7 +98,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.epsilon = 1.0
         self.epsilon_decay = 0.996
         self.epsilon_min = 0.05
-        self.batch_size = 32
+        self.batch_size = 64
         self.train_start = 3
         self.update_target_model_start = 5
 
@@ -107,9 +107,9 @@ class Pic4rlTraining(Pic4rlEnvironment):
 
         # Build actor and critic models and target models
         self.actor_model, self.actor_optimizer = self.build_actor()
-        self.critic_model = self.build_critic()
+        self.critic_model, self.critic_optimizer = self.build_critic()
         self.target_actor_model, _ = self.build_actor()
-        self.target_critic_model = self.build_critic()
+        self.target_critic_model, _ = self.build_critic()
 
        # Load saved models
         self.load_model = False
@@ -163,20 +163,22 @@ class Pic4rlTraining(Pic4rlEnvironment):
             if global_step == self.train_start+1:
                 print('Start training models, global step:', global_step)
 
-            state = list()
-            next_state = list()
+            #state = list()
+            #next_state = list()
             done = False
             init = True
             score = 0
 
+            time_check = time.time()
             # Reset ddpg environment
             state = self.env.reset()
             print('state raw shape: ',state.shape)
             #print(state)
+            print('time for env reset:', time.time()-time_check)
 
             while not done:
                 local_step += 1
-                #print('new local step at time: ', time.time())
+                time_check = time.time()
                 # Action based on the current state
                 if local_step == 1:
                     action = np.array([0.0, 0.0])
@@ -189,11 +191,13 @@ class Pic4rlTraining(Pic4rlEnvironment):
                         action = tf.constant([0.0, 0.0])
                     #print("Action:", action)
                     #print("Action size:", action.shape)
+                print('time for getting action:', time.time()-time_check)
 
+                time_check = time.time()
                 next_state, reward, done, info = self.env.step(action)
                 #print('next state:', next_state)
                 #print(next_state.shape)
-                
+                print('time for env step:', time.time()-time_check)
                 score += reward
 
                 #self.evalutate_Hz()
@@ -322,10 +326,10 @@ class Pic4rlTraining(Pic4rlEnvironment):
         output = Dense(1, activation='linear')(concat_h2)
         model = Model(inputs=[state_input, actions_input], outputs=[output])
         adam  = Adam(lr=0.0008)
-        model.compile(loss="mse", optimizer=adam)
+        #model.compile(loss="mse", optimizer=adam)
         model.summary()
 
-        return model
+        return model, adam
     
     def update_target_model(self):
         self.target_actor_model.set_weights(self.actor_model.get_weights())
@@ -417,13 +421,20 @@ class Pic4rlTraining(Pic4rlEnvironment):
 
             print('time to set batch', time.time()-time_check)
             time_check = time.time()
-            self.train_critic(states, actions, next_states, rewards, dones, target_train_start)
+            critic_loss = self.train_critic(states, actions, next_states, rewards, dones, target_train_start)
+
+            #if np.isnan(sum(critic_loss.numpy())):
+                #print("critic_loss ",critic_loss.np())
+            #    raise ValueError("critic_loss is nan")
             print('time to train critic', time.time()-time_check)
+
             time_check = time.time()
-            self.train_actor(states, actions, next_states, rewards, dones)
+            actor_loss = self.train_actor(states)
+            #if np.isnan(sum(actor_loss.numpy())):
+                #print("actor_loss ",actor_loss)
+            #    raise ValueError("actor_loss is nan")
             print('time to train actor', time.time()-time_check)
 
-    #@tf.function
     def train_critic(self, states, actions, next_states, rewards, dones, target_train_start):
         time_check = time.time()
         error = False
@@ -483,21 +494,32 @@ class Pic4rlTraining(Pic4rlEnvironment):
         print('time for targets', time.time()-time_check)
         time_check = time.time()
         #inputs must be a list of tensors since we have a multiple inputs NN
-        self.critic_model.train_on_batch([states, actions], targets)
-        print('time for critic train on batch', time.time()-time_check)
+        #self.critic_model.train_on_batch([states, actions], targets)
+        critic_loss = self.compute_critic_gradient(states, actions, targets)
+        print('time for critic gradients', time.time()-time_check)
+        return critic_loss
     
     @tf.function
-    def train_actor(self, states, actions, next_states, rewards, dones):
-        time_check = time.time()
+    def compute_critic_gradient(self, states, actions, targets):
+        with tf.GradientTape() as tape_critic:
+            predicted_qs = self.critic_model([states,actions])
+            theta_critic = self.critic_model.trainable_variables
+            tape_critic.watch(theta_critic)
+            critic_loss = mean_squared_error(targets, predicted_qs)
+        critic_grad = tape_critic.gradient(critic_loss, theta_critic)
+        critic_gradients = list(map(lambda x: tf.divide(x, self.batch_size), critic_grad))
+        self.critic_optimizer.apply_gradients(zip(critic_gradients, self.critic_model.trainable_variables))
+        return critic_loss
+
+    @tf.function
+    def train_actor(self, states):
         with tf.GradientTape() as tape:
             a = self.actor_model([states])
             tape.watch(a)
             q = self.critic_model([states, a])
         dq_da = tape.gradient(q, a)
         #print('Action gradient dq_qa: ', dq_da)
-        print('time for actor grad tape 1', time.time()-time_check)
 
-        time_check = time.time()
         with tf.GradientTape() as tape:
             a = self.actor_model([states])
             theta = self.actor_model.trainable_variables
@@ -507,8 +529,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         actor_gradients = list(map(lambda x: tf.divide(x, self.batch_size), da_dtheta))
         self.actor_optimizer.apply_gradients(zip(actor_gradients, self.actor_model.trainable_variables))
         #self.actor_optimizer.apply_gradients(zip(da_dtheta, self.actor_model.trainable_variables))
-        print('time for apply actor gradient', time.time()-time_check)
-
+        return q
 
 def main(args=None):
     rclpy.init()

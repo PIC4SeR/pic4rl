@@ -17,10 +17,11 @@
 # Authors: Ryan Shim, Gilbert
 
 import os
+import tensorflow as tf
+
 import random
 import sys
 import time
-import tensorflow as tf
 
 from gazebo_msgs.srv import DeleteEntity
 from gazebo_msgs.srv import SpawnEntity
@@ -239,7 +240,7 @@ class Pic4rlEnvironment(Node):
 		return False, "None"
 
 	def get_observation(self, twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw,depth_image):
-		state_list = []
+		#state_list = []
 		#state_list.append(float(goal_distance))
 		#state_list.append(float(goal_angle))
 
@@ -251,16 +252,24 @@ class Pic4rlEnvironment(Node):
 
 		#return np.array([goal_distance, goal_angle, lidar_measurements])
 
-		state_list.append(float(self.goal_distance)*np.ones(self.image_size))
-		state_list.append(float(self.goal_angle)*np.ones(self.image_size))
-		state_list.append(depth_image)
-		state_list = np.stack(state_list)
-		state_list = tf.convert_to_tensor(state_list, dtype=tf.float32)
-		state_list = tf.reshape(state_list, [224,224,3])
+		#state_list.append(float(self.goal_distance)*np.ones(self.image_size))
+		#state_list.append(float(self.goal_angle)*np.ones(self.image_size))
+		#state_list.append(depth_image)
+		#state_list = np.stack(state_list)
+		#state_list = tf.convert_to_tensor(state_list, dtype=tf.float32)
+		#state_list = tf.reshape(state_list, [224,224,3])
 		#print('state size', state_list.shape)
 		#print('STATE', state_list)
+		#print(depth_image)
+		tf_goal_distance = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_distance)
+		tf_goal_angle = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_angle)
+		#print(tf_goal_distance)
+		state_tf = tf.stack([tf_goal_distance,tf_goal_angle,depth_image], axis=2)
+		#print('state shape: ', state_tf.shape)
+		#state_tf = tf.reshape(state_tf, [224,224,3])
+		#print('state shape reshaped: ', state_tf.shape)
 
-		return state_list
+		return state_tf
 
 	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
 		yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.6
@@ -397,9 +406,11 @@ class Pic4rlEnvironment(Node):
 		img = tf.reshape(img, [240,320,1])
 		width = 224
 		height = 224
-		img_crop = tf.image.crop_to_bounding_box(img, 2, 48, width,height)
-		img_crop = tf.reshape(img_crop, [width,height])
-		depth_image = np.asarray(img_crop, dtype= np.float32)
+		h_off = int((240-height)*0.5)
+		w_off = int((320-width)*0.5)
+		img_crop = tf.image.crop_to_bounding_box(img,h_off,w_off,height,width)
+		depth_image = tf.reshape(img_crop, [height,width])
+		#depth_image = np.asarray(img_crop, dtype= np.float32)
 		#cv2.imwrite('/home/maurom/depth_images/d_img_crop.png', img_crop)
 		self.image_size = depth_image.shape
 		return depth_image
