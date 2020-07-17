@@ -15,7 +15,7 @@ from rclpy.node import Node
 from gazebo_msgs.srv import DeleteEntity, SpawnEntity
 from std_srvs.srv import Empty
 
-from pic4rl_sensors.Sensor import OdomSensor, LaserScanSensor
+from pic4rl_sensors.Sensor import OdomSensor, LaserScanSensor, RealSenseSensor
 
 import numpy as np
 
@@ -23,7 +23,7 @@ import time
 import collections
 
 class Pic4rlGymGazEnv(Node):
-	def __init__(self,odom = False,lidar = False):
+	def __init__(self,odom = False,lidar = False, realsense = False):
 
 		super().__init__('Pic4rlGymGazEnv')
 
@@ -39,6 +39,7 @@ class Pic4rlGymGazEnv(Node):
 
 		self.odom = odom
 		self.lidar = lidar
+		self.realsense = realsense
 
 		self.__init__sensors()
 
@@ -159,41 +160,6 @@ class Pic4rlGymGazEnv(Node):
 
 		self.state_history.append(self.state.copy())
 
-
-
-	def uupdate_state(self):
-		print("ççççççççççççççççççççççççççççççççççò")
-		try:
-			print("PRIMA " +str(self.state['odom_pos_x']))
-		except:
-			pass
-		for sensor in self.sensors:
-			processes_data = sensor.process_data()
-			print("0_______")
-			print(processes_data.keys())
-			
-			print("1_______")
-			print(self.state.keys())
-			try:
-				for key in processes_data.keys(): #Remove previous data
-					self.state.pop(key) #I don't use .clean because 
-										# I don't wanna lose goal related info
-			except KeyError:
-				pass #first time an error rise
-			print("2_______")
-			print(self.state.keys())
-			self.state.update(processes_data)
-			print("3_______")
-			print(self.state.keys())
-		self.state_history.append(self.state)
-
-		try:
-			print(self.state_history[0]["odom_pos_x"])
-			print(self.state_history[1]["odom_pos_x"])
-		except:
-			pass
-		print("DOPO " +str(self.state['odom_pos_x']))
-
 	def reset_state(self):
 		for sensor in self.sensors:
 			del sensor.data
@@ -224,14 +190,19 @@ class Pic4rlGymGazEnv(Node):
 		self.sensors = []
 
 		if self.odom:
-			odom_sensor = OdomSensor()
-			self.create_subscription(*odom_sensor.add_subscription())
-			self.sensors.append(odom_sensor)
+			self.odom_sensor = OdomSensor()
+			self.create_subscription(*self.odom_sensor.add_subscription())
+			self.sensors.append(self.odom_sensor)
 
 		if self.lidar:
-			lidar_sensor = LaserScanSensor()
-			self.create_subscription(*lidar_sensor.add_subscription())
-			self.sensors.append(lidar_sensor)
+			self.lidar_sensor = LaserScanSensor()
+			self.create_subscription(*self.lidar_sensor.add_subscription())
+			self.sensors.append(self.lidar_sensor)
+
+		if self.realsense:
+			self.realsense_sensor = RealSenseSensor()
+			self.create_subscription(*self.realsense_sensor.add_subscription())
+			self.sensors.append(self.realsense_sensor)
 
 		print("Following sensors are used:")
 		for sensor in self.sensors:

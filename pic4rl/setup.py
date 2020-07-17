@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
         'pic4rl_training = pic4rl.pic4rl_training:main',
+        'pic4rl_training_waffle_r200 = pic4rl.pic4rl_training_waffle_r200:main',
         'pic4rl_gazebo = pic4rl.pic4rl_gazebo:main',
         'pic4rl_environment = pic4rl.pic4rl_environment:main',
         'pic4rl_gymgazebo = pic4rl.pic4rl_gymgazebo:main',
