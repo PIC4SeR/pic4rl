@@ -1,6 +1,6 @@
 > Project: "pic4rl"
 
-> Owner: "Enrico Sutera" 
+> Owner: "Enrico Sutera & Mauro Martini"  
 
 > Date: "2020:06" 
 
