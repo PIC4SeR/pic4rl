@@ -20,12 +20,20 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        'pic4rl_training = pic4rl.pic4rl_training:main',
-        'pic4rl_training_waffle_r200 = pic4rl.pic4rl_training_waffle_r200:main',
-        'pic4rl_gazebo = pic4rl.pic4rl_gazebo:main',
-        'pic4rl_environment = pic4rl.pic4rl_environment:main',
+
         'pic4rl_gymgazebo = pic4rl.pic4rl_gymgazebo:main',
-        'pic4rl_turtlebot3_burger = pic4rl.pic4rl_turtlebot3_burger:main'
+
+        'pic4rl_tb3_burger_lidar = pic4rl.pic4rl_tb3_burger_lidar:main',
+        'pic4rl_training_tb3_burger_lidar = pic4rl.pic4rl_training_tb3_burger_lidar:main',
+
+        'pic4rl_tb3_waffle_r200_CPU = pic4rl.pic4rl_tb3_waffle_r200_CPU:main',
+        'pic4rl_training_tb3_waffle_r200_CPU = pic4rl.pic4rl_training_tb3_waffle_r200_CPU:main',
+
+        #'pic4rl_training = pic4rl.pic4rl_training:main',
+        #'pic4rl_training_waffle_r200 = pic4rl.pic4rl_training_waffle_r200:main',
+        #'pic4rl_gazebo = pic4rl.pic4rl_gazebo:main',
+        #'pic4rl_environment = pic4rl.pic4rl_environment:main',
+        #'pic4rl_turtlebot3_burger = pic4rl.pic4rl_turtlebot3_burger:main'
         ],
     },
 )

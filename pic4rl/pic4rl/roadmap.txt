@@ -1,0 +1,4 @@
+
+
+TODO
+	Add collision condition when using camera

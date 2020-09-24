@@ -18,7 +18,6 @@ from std_srvs.srv import Empty
 from pic4rl_sensors.Sensor import OdomSensor, LaserScanSensor, RealSenseSensor
 
 import numpy as np
-
 import time 
 import collections
 
@@ -41,7 +40,11 @@ class Pic4rlGymGazEnv(Node):
 		self.lidar = lidar
 		self.realsense = realsense
 
-		self.__init__sensors()
+		self.episode = 0
+		self.local_step = 0
+		self.global_step = 0
+
+		"""self.__init__sensors()""" # Removed as sensors are in inerhiting file
 
 	"""################
 	# gym related
@@ -53,6 +56,9 @@ class Pic4rlGymGazEnv(Node):
 		pass
 
 	def step(self,action):
+		self.global_step += 1
+		self.local_step += 1
+
 		"""This method should provide the command to be sent to gazebo
 		and handled interanlly via gazebo_step method
 		"""
@@ -68,8 +74,8 @@ class Pic4rlGymGazEnv(Node):
 
 		self.update_state() # Take new data from sensor, clean them 
 
-		observation, done = self.get_observation()
-		reward = self.get_reward()
+		observation, done, done_info = self.get_observation()
+		reward = self.get_reward(done, done_info)
 		info = None
 
 		return observation, reward, done, info
@@ -87,8 +93,11 @@ class Pic4rlGymGazEnv(Node):
 		raise NotImplementedError
 
 	def reset(self):
+		self.episode += 1
+
 		self.get_logger().debug("Reset request received ...")
 		self.get_logger().debug("Resetting world ...")
+		self.get_logger().info("Reset...")
 		self.reset_state()
 		self.reset_world()
 		self.get_goal()
@@ -187,6 +196,8 @@ class Pic4rlGymGazEnv(Node):
 	################"""
 
 	def __init__sensors(self):
+		
+		"""
 		self.sensors = []
 
 		if self.odom:
@@ -207,6 +218,8 @@ class Pic4rlGymGazEnv(Node):
 		print("Following sensors are used:")
 		for sensor in self.sensors:
 			print(sensor.name)
+		"""
+		raise NotImplementedError
 
 	"""################
 	# Gazebo services

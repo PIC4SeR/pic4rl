@@ -84,12 +84,12 @@ class Pic4rlTraining(Pic4rlTurtleBot3):
 			state_shape=self.observation_space.shape,
 			action_dim=self.action_space.high.size,
 			gpu=-1,  # Run on CPU. If you want to run on GPU, specify GPU number
-			memory_capacity=10000,
+			memory_capacity=100000,
 			max_action=self.action_space.high,
-			lr_actor = 0.00025,
-			lr_critic = 0.00025,
+			lr_actor = 0.00001,
+			lr_critic = 0.0001,
 			batch_size=64,
-			n_warmup=500)
+			n_warmup=2000)
 		trainer = Trainer(policy, self, args, test_env=None)
 		trainer()
 

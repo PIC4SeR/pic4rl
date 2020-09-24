@@ -30,7 +30,8 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 	def __init__(self):
 		super().__init__(
 			odom = True,
-			lidar = True)
+			lidar = True,
+			realsense = True)
 		self.__init__spaces()
 
 		qos = QoSProfile(depth=10)
@@ -49,14 +50,14 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 		#Action space
 
 		#Linear velocity
-		lin_speed_low = [+0] 
-		lin_speed_high = [+0.2]
+		#lin_speed_low = [+0] 
+		#lin_speed_high = [+0.2]
 
 		#Angular velocity
-		ang_speed_low = [-1.7]
-		ang_speed_high = [1.7]
+		#ang_speed_low = [-1.7]
+		#ang_speed_high = [1.7]
 
-		self.action_space = spaces.Box(
+		"""self.action_space = spaces.Box(
 			low = np.array(lin_speed_low + 
 							ang_speed_low,
 							dtype=np.float32),
@@ -65,14 +66,23 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 							dtype=np.float32),
 			#shape=(1,),
 			dtype = np.float32
-			)
+			)"""
 
+		self.action_space = spaces.Box(
+					low=0,
+					high=255, 
+					shape=(1, 2, 2),
+					dtype=np.uint8)
+		print("ACTION SPACE SHAPE ", self.action_space.shape)
+		print("ACTION SPACE action_space.high.size ", self.action_space.high.size)
 		#Observation space
 
 		#Lidar points
-		n_points = 60
-		lidar_low = [0] * n_points
-		lidar_high = [3.5] * n_points
+		#n_points = 60
+		#lidar_low = [0] * n_points
+		#lidar_high = [3.5] * n_points
+
+		# Depth camera
 
 		# Distance
 		distance_low = [0]
@@ -82,17 +92,18 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 		angle_low = [-math.pi]
 		angle_high = [math.pi]
 
+		try:
+			height = self.realsense_sensor.height
+			width = self.realsense_sensor.width
+		except Exception as e:
+			raise e("The environment is supposed to have a realsense istance width\
+					 and screen_height!")
+
 		self.observation_space = spaces.Box(
-			low = np.array(lidar_low + 
-							distance_low +
-							angle_low,
-							dtype=np.float32),
-			high = np.array(lidar_high + 
-							distance_high +
-							angle_high,
-							dtype=np.float32),
-			dtype = np.float32
-			)
+					low=0,
+					high=255, 
+					shape=(height, width, 3),
+					dtype=np.uint8)
 
 	def _step(self,action):
 		twist = Twist() #void instance created
@@ -100,8 +111,11 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 		if action is None:
 			pass #null action
 		else:
-			twist.linear.x = float(action[0])
-			twist.angular.z = float(action[1])
+			linear_speed = float(action[0][0][0])/255 * 0.2
+			angular_speed = float(action[0][0][1])/255 * 3.4 - 1.7
+
+			twist.linear.x = linear_speed
+			twist.angular.z = angular_speed
 		self.cmd_vel_pub.publish(twist)
 
 	def get_only_observation(self):
@@ -117,12 +131,18 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 		observation = []
 
 		# Adding angle and distance
-		observation += self.process_odom() 
-
+		goal_distance, goal_angle = self.process_odom() 
+		depth_image = self.state["depth_image"]
+		tf_goal_distance = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_distance)
+		tf_goal_angle = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_angle)
+		#print(tf_goal_distance)
+		state_tf = tf.stack([tf_goal_distance,tf_goal_angle,depth_image], axis=2)
+		tf.print("________________________________________-")
+		print(state_tf.shape)
 		# Reducing lidar ranges number
-		observation += self.process_laserscan()
+		#observation += self.process_laserscan()
 
-		return np.array(observation)
+		return state_tf
 
 	def get_observation(self):
 

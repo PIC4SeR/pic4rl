@@ -63,7 +63,7 @@ import gym
 
 #from pic4rl.pic4rl_environment import Pic4rlEnvironment
 #from pic4rl.pic4rl_turtlebot3_burger import Pic4rlTurtleBot3
-from pic4rl.pic4rl_tb3_burger_lidar import Pic4rlTurtleBot3
+from pic4rl.pic4rl_tb3_waffle_r200_CPU import Pic4rlTurtleBot3
 
 from tf2rl.experiments.trainer import Trainer
 from tf2rl.algos.ddpg import DDPG
@@ -84,16 +84,15 @@ class Pic4rlTraining(Pic4rlTurtleBot3):
 			state_shape=self.observation_space.shape,
 			action_dim=self.action_space.high.size,
 			gpu=-1,  # Run on CPU. If you want to run on GPU, specify GPU number
-			memory_capacity=10000,
+			memory_capacity=1000000,
 			max_action=self.action_space.high,
-			lr_actor = 0.00025,
+			lr_actor = 0.000025,
 			lr_critic = 0.00025,
 			batch_size=64,
-			n_warmup=500)
+			n_warmup=int(1e4) #before 500
+			)
 		trainer = Trainer(policy, self, args, test_env=None)
 		trainer()
-
-
 
 
 

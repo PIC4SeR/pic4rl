@@ -18,6 +18,8 @@ from cv_bridge import CvBridge
 
 import numpy as np 
 
+import tensorflow as tf
+
 qos = QoSProfile(depth=10)
 
 class Sensor():
@@ -152,9 +154,11 @@ class RealSenseSensor(Sensor):
         screen_width = self.screen_width
         if self.data is None:
             raise ValueError("No " + self.name + " data received")
+
         depth_image_raw = np.zeros((screen_height,screen_width), np.uint8)
         depth_image_raw = self.bridge.imgmsg_to_cv2(self.data, '32FC1')
         depth_image_raw = np.array(depth_image_raw, dtype= np.float32)
+
         #savetxt('/home/maurom/depth_images/text_depth_image_raw.csv', depth_image_raw, delimiter=',')
         #np.save('/home/maurom/depth_images/depth_image.npy', depth_image_raw)
         #cv2.imwrite('/home/maurom/depth_images/d_img_01.png', self.depth_image_raw)
@@ -169,6 +173,7 @@ class RealSenseSensor(Sensor):
         #check crop is performed correctly
         img = tf.convert_to_tensor(depth_image, dtype=tf.float32)
         img = tf.reshape(img, [screen_height,screen_width,1])
+        """
         width = self.width
         height = self.height
         img_crop = tf.image.crop_to_bounding_box(img, 2, 48, width,height)
@@ -176,6 +181,10 @@ class RealSenseSensor(Sensor):
         depth_image = np.asarray(img_crop, dtype= np.float32)
         #cv2.imwrite('/home/maurom/depth_images/d_img_crop.png', img_crop)
         self.image_size = depth_image.shape
+        """
+        depth_image = np.asarray(img, dtype= np.float32)
+        self.image_size = depth_image.shape
+
         return {"depth_image":depth_image}
 
 
@@ -183,9 +192,8 @@ class RealSenseSensor(Sensor):
         #Careful if the cutoff is in meters or millimeters!
         cutoff = 3.5
         img = self.depth_to_3ch(img, cutoff) # all values above 255 turned to white
-        #cv2.imwrite('/home/maurom/depth_images/d_img_02.png', img) 
         img = self.depth_scaled_to_255(img) # correct scaling to be in [0,255) now
-        #cv2.imwrite('/home/maurom/depth_images/d_img_03.png', img) 
+
         return img
 
     def depth_to_3ch(self,img, cutoff):

@@ -14,6 +14,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name), glob('launch/*.launch.py')),
         (os.path.join('share', package_name, 'worlds/empty_worlds'), glob('worlds/empty_worlds/*.model')),
+        (os.path.join('share', package_name, 'worlds/4wall'), glob('worlds/4wall/*.model')),
         #('share/' + package_name + '/worlds' + '/empty_worlds', glob.glob(os.path.join('worlds', os.path.join('empty_worlds', 'empty_world_omnirob.model')))),
         #('share/' + package_name + '/worlds' + '/empty_worlds', glob.glob(os.path.join('worlds', os.path.join('empty_worlds', 'empty_world_burger.model')))),
         ],
