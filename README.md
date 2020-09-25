@@ -27,6 +27,8 @@ in case of dependencies error related to gdal-abi-2-2-3:
 sudo apt remove libgda20
 sudo apt install libogdi3.2
 sudo apt install libgdal20=2.2.3+dfsg-2
+sudo apt install libgazebo9
+sudo apt install gazebo9
 ```
 ### Then proceed installing gazebo9.
 
