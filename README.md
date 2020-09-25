@@ -22,16 +22,6 @@ On ubuntu 18.04, install folliwing https://index.ros.org/doc/ros2/Installation/D
 Gazebo 9 i required.
 Install following http://gazebosim.org/tutorials?cat=install&tut=install_ubuntu&ver=9.0
 
-in case of dependencies error related to gdal-abi-2-2-3:
-```
-sudo apt remove libgda20
-sudo apt install libogdi3.2
-sudo apt install libgdal20=2.2.3+dfsg-2
-sudo apt install libgazebo9
-sudo apt install gazebo9
-```
-### Then proceed installing gazebo9.
-
 Gazebo 9 should also be configured, as paths have to be added (or temporarily sourced each time).
 gazebo must be sourced:
 ```
