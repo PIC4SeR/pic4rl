@@ -21,6 +21,7 @@ import os
 import tensorflow as tf
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
+
 if gpus:
 	try:
 	# Currently, memory growth needs to be the same across GPUs
@@ -31,19 +32,6 @@ if gpus:
 	except RuntimeError as e:
 	# Memory growth must be set before GPUs have been initialized
 		print(e)
-
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# if gpus:
-#   # Restrict TensorFlow to only allocate 1GB of memory on the first GPU
-#   try:
-#     tf.config.experimental.set_virtual_device_configuration(
-#         gpus[0],
-#         [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=7000)])
-#     logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-#     print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-#   except RuntimeError as e:
-#     # Virtual devices must be set before GPUs have been initialized
-#     print(e)
 
 from gazebo_msgs.srv import DeleteEntity
 from gazebo_msgs.srv import SpawnEntity
@@ -59,14 +47,13 @@ import collections
 
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Activation
-from tensorflow.keras.layers import Dense, Conv2D, GlobalAveragePooling2D, MaxPooling2D, BatchNormalization
+from tensorflow.keras.layers import Dense, BatchNormalization
 from tensorflow.keras.layers import Dropout 
 from tensorflow.keras.layers import Input, concatenate
-from tensorflow.keras.initializers import RandomUniform, glorot_normal, HeUniform, GlorotUniform
+from tensorflow.keras.initializers import RandomUniform, glorot_normal
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import mean_squared_error
-from tensorflow.keras import backend as K
 
 import json
 import numpy as np
@@ -74,11 +61,9 @@ import random
 import sys
 import time
 import math
-import gc
 
 from pic4rl.pic4rl_environment import Pic4rlEnvironment
 
-#with tf.device('/CPU:0'):
 MAX_LIN_SPEED = 0.2
 MAX_ANG_SPEED = 1
 DESIRED_CTRL_HZ = 1
@@ -95,16 +80,14 @@ class Pic4rlTraining(Pic4rlEnvironment):
         qos = QoSProfile(depth=10)
 
         self.env = Pic4rlEnvironment()
-        #self.stage = 1
+        #self.stage = int(stage)
 	
         #self.avg_cmd_vel = [0.2,int(0)]
         #self.evalutate_Hz(init=True)
 
         # State size and action size
-        self.state_size = 3 #goal distance, goal angle, lidar points
+        self.state_size = 10 #goal distance, goal angle, lidar points
         self.action_size = 2 #linear velocity, angular velocity
-        self.height = 64
-        self.width = 64
         self.episode_size = 5000
 
         # DDPG hyperparameter
@@ -112,14 +95,14 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.discount_factor = 0.99
         self.learning_rate = 0.00025
         self.epsilon = 1.0
-        self.epsilon_decay = 0.998
+        self.epsilon_decay = 0.996
         self.epsilon_min = 0.05
         self.batch_size = 64
         self.train_start = 64
         self.update_target_model_start = 128
 
         # Replay memory
-        self.memory = collections.deque(maxlen=200000)
+        self.memory = collections.deque(maxlen=1000000)
 
         # Build actor and critic models and target models
         self.actor_model, self.actor_optimizer = self.build_actor()
@@ -155,10 +138,15 @@ class Pic4rlTraining(Pic4rlEnvironment):
                     self.model_dir_path,
                     'critic_stage'+str(self.stage)+'_episode'+str(self.load_episode)+'.json')) as outfile:
                 param = json.load(outfile)
-                self.epsilon = param.get('epsilon')                  
+                self.epsilon = param.get('epsilon')    
 
-            self.update_target_model()
+            self.update_target_model()              
 
+        """************************************************************
+        ** Initialise ROS clients
+        ************************************************************"""
+        # Initialise clients
+        #self.Ddpg_com_client = self.create_client(Ddpg, 'Ddpg_com')
         """************************************************************
         ** Start process
         ************************************************************"""
@@ -177,22 +165,21 @@ class Pic4rlTraining(Pic4rlEnvironment):
             if global_step == self.train_start+1:
                 print('Start training models, global step:', global_step)
 
-            #state = list()
-            #next_state = list()
+            state = list()
+            next_state = list()
             done = False
             init = True
             score = 0
 
-            #time_check = time.time()
             # Reset ddpg environment
             state = self.env.reset(episode)
-            #print('state raw shape: ',state.shape)
-            #print(state)
-            #print('time for env reset:', time.time()-time_check)
+            state = np.asarray(state, dtype=np.float32)
+            #print('Goal distance, goal angle, lidar points', state)
+            #time.sleep(1.0)
 
             while not done:
                 local_step += 1
-                #time_check = time.time()
+                #print('new local step at time: ', time.time())
                 # Action based on the current state
                 if local_step == 1:
                     action = np.array([0.0, 0.0])
@@ -200,52 +187,37 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 else:
                     state = next_state
                     action = self.get_action(state)
-                    if np.any(np.isnan(action)):
+                    if np.isnan(action[1]):
                         print("Action:", action)
-                        action = tf.constant([0.0, 0.0])
+                        action = np.array([0.0, 0.0])
                     #print("Action:", action)
                     #print("Action size:", action.shape)
-                #print('time for getting action:', time.time()-time_check)
 
-                #time_check = time.time()
                 next_state, reward, done, info = self.env.step(action)
+                next_state = np.asarray(next_state, dtype=np.float32)
                 #print('next state:', next_state)
-                #print(next_state.shape)
-                #print('time for env step:', time.time()-time_check)
                 score += reward
-
-                #self.evalutate_Hz()
 
                 # Save <s, a, r, s'> samples
                 if local_step > 1:
                     self.append_sample(state, action, next_state, reward, done)
 
                     # Train model
-                    if global_step >= self.update_target_model_start:
+                    if global_step > self.update_target_model_start:
                         #print('Update target model, global step:', global_step)
-                        #time_start = time.time()
                         self.train_model(True)
-                        #time_diff = time.time() - time_start
-                        #print('Total time for training:', time_diff)
-                    
-                    elif global_step >= self.train_start:
-                        #print('Start training. Global step:', global_step)
-                        #time_start = time.time()
+                    elif global_step > self.train_start:
+                        #print('Training models, global step:', global_step)
+                        #time_check = time.time()
                         self.train_model()
-                        #time_diff = time.time() - time_start
-                        #print('Total time for training:', time_diff)
+                        #print('Total time for training:', time.time()-time_check)
 
                     if done:
-                        # Update target neural network
-                        #HARD UPDATE
+                        # Update neural network
                         #self.update_target_model()
-                        #print('Updating target models')
-
-                        #SOFT UPDATE
-                        #time_start = time.time()
                         self.target_actor_model = self.update_target_model_soft(self.actor_model, self.target_actor_model, self.tau)
                         self.target_critic_model = self.update_target_model_soft(self.critic_model, self.target_critic_model, self.tau)
-                        #print('time for target model update:', time.time()-time_check)
+
                         print(
                             "Episode:", episode,
                             "score:", score,
@@ -261,7 +233,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 #current_hz = 1/self.avg_cmd_vel[0]
                 #time.sleep(max((current_hz-DESIRED_CTRL_HZ),0))
 
-            # Update result and save model every 10 episodes
+            # Update result and save model every 20 episodes
             if episode > 400 and episode % 20 == 0:
                 self.actor_model_path = os.path.join(
                     self.model_dir_path,
@@ -301,64 +273,36 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 self.start = end
 
     def build_actor(self):
-        goal_input = Input(shape=(2,))
-        depth_image_input = Input(shape=(self.width, self.height,1,))
-        initializer = HeUniform()
-        #last_init = tf.keras.initializers.glorot_uniform()
-        #depth_image_norm = BatchNormalization()(depth_image_input)
-        #goal_norm = BatchNormalization()(goal_input)
 
-        c1 = Conv2D(32, 3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(depth_image_input)
-        c2 = Conv2D(32, 3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(c1)
-        c2p = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(c2)
-        c3 = Conv2D(64, 3, strides=(2, 2), activation='relu', kernel_initializer = initializer)(c2p)
-        c4 = Conv2D(64, 3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(c3)
-        h0 = GlobalAveragePooling2D()(c4)
-
-        fc1 = Dense(128, activation='relu', kernel_initializer = initializer)(h0)
-        fc2 = Dense(64, activation='relu', kernel_initializer = initializer)(fc1)
-        #fc2s = Dense(32, activation='relu', kernel_initializer = initializer)(fc1s)
-        conc1 = concatenate([goal_input,fc2])
-        out1 = Dense(128, activation='relu', kernel_initializer = initializer)(conc1)
+        state_input = Input(shape=(self.state_size,))
+        h1 = Dense(512, activation='relu')(state_input)
+        h2 = Dense(256, activation='relu')(h1)
+        out1 = Dense(256, activation='relu')(h2)
+        #out1 = Dropout(0.2)(out1)
 
         Linear_velocity = Dense(1, activation = 'sigmoid')(out1)*MAX_LIN_SPEED
         Angular_velocity = Dense(1, activation = 'tanh')(out1)*MAX_ANG_SPEED
         output = concatenate([Linear_velocity,Angular_velocity])
 
-        model = Model(inputs=[goal_input, depth_image_input], outputs=[output])
+        model = Model(inputs=[state_input], outputs=[output])
         adam = Adam(lr= 0.0001)
         model.summary()
 
         return model, adam
 
     def build_critic(self):
-        goal_input = Input(shape=(2,))
-        depth_image_input = Input(shape=(self.width, self.height,1,))    
+        state_input = Input(shape=(self.state_size,))      
         actions_input = Input(shape=(self.action_size,))
 
-        initializer = HeUniform()
-        #depth_image_norm = BatchNormalization()(depth_image_input)
-        #goal_norm = BatchNormalization()(goal_input)
-        #actions_norm = BatchNormalization()(actions_input)
+        h_state = Dense(256, activation='relu')(state_input)
+        h_action = Dense(64, activation='relu')(actions_input)
+        concatenated = concatenate([h_state, h_action])
+        concat_h1 = Dense(256, activation='relu')(concatenated)
+        concat_h2 = Dense(128, activation='relu')(concat_h1)
+        #concat_h2 = Dropout(0.2)(concat_h2)
 
-        c1 = Conv2D(32,3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(depth_image_input)
-        c2 = Conv2D(32,3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(c1)
-        c2p = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(c2)
-        c3 = Conv2D(64,3, strides=(2, 2), activation='relu', kernel_initializer = initializer)(c2p)
-        c4 = Conv2D(64,3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(c3)
-        h0 = GlobalAveragePooling2D()(c4)
-
-        fc1 = Dense(64, activation='relu', kernel_initializer = initializer)(h0)
-
-        conc1 = concatenate([goal_input,fc1])
-        h_state = Dense(128, activation='relu', kernel_initializer = initializer)(conc1)
-        #h_action = Dense(64, activation='relu', kernel_initializer = initializer)(actions_input)
-        conc2 = concatenate([h_state, actions_input])
-        concat_h1 = Dense(128, activation='relu', kernel_initializer = initializer)(conc2)
-        #concat_h1 = Dense(128, activation='relu', kernel_initializer = initializer)(concat_h1)
-
-        output = Dense(1, activation='linear')(concat_h1)
-        model = Model(inputs=[goal_input, depth_image_input, actions_input], outputs=[output])
+        output = Dense(1, activation='linear')(concat_h2)
+        model = Model(inputs=[state_input, actions_input], outputs=[output])
         adam  = Adam(lr=0.0008)
         model.compile(loss="mse", optimizer=adam)
         model.summary()
@@ -385,173 +329,135 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 #print("rnd_action",rnd_action)
                 return rnd_action
         else:
-            goal = tf.reshape(state[0], [1,2])
-            depth_image = tf.reshape(state[1], [1,self.width,self.height])
-            pred_action = self.actor_model([goal, depth_image])
-            print("pred_action", pred_action)
-            return [pred_action[0][0], pred_action[0][1]]
+                state = np.asarray(state, dtype= np.float32)
+                #print("state in prediction:",state)
+                pred_action = self.actor_model(state.reshape(1, len(state)))
+                print("pred_action", pred_action)
+                return [pred_action[0][0], pred_action[0][1]]
+
 
     def append_sample(self, state, action, next_state, reward, done):
         self.memory.append((state, action, next_state, reward, done))
-        #tf.print(len(self.memory))
 
 
     def train_model(self, target_train_start=False):
-        time_check = time.time()
-        mini_batch = random.sample(self.memory, self.batch_size)
-       
-        rewards=[]
-        dones=[]
-        for i in range(self.batch_size):
-            if i == 0:
-                tmp_goal = tf.expand_dims(mini_batch[i][0][0],0)
-                goals = tmp_goal
-                tmp_image= tf.expand_dims(mini_batch[i][0][1],0)
-                images = tmp_image
-                tmp_next_goal = tf.expand_dims(mini_batch[i][2][0],0)
-                next_goals = tmp_next_goal
-                tmp_next_image = tf.expand_dims(mini_batch[i][2][1],0)
-                next_images = tmp_next_image
-                tmp_action = tf.expand_dims(mini_batch[i][1],0)
-                actions = tmp_action
+            mini_batch = random.sample(self.memory, self.batch_size)
+
+            rewards = []
+            dones = []            
+            for i in range(self.batch_size):
+                if i == 0:
+                    tmp_state = tf.expand_dims(mini_batch[i][0],0)
+                    states = tmp_state
+                    tmp_next_state = tf.expand_dims(mini_batch[i][2],0)
+                    next_states = tmp_next_state
+                    tmp_action = tf.expand_dims(mini_batch[i][1],0)
+                    actions = tmp_action
+
+                else:
+                    tmp_state = tf.expand_dims(mini_batch[i][0], 0)   
+                    states = tf.concat([states, tmp_state], axis=0)
+                    tmp_next_state = tf.expand_dims(mini_batch[i][2], 0)   
+                    next_states = tf.concat([next_states, tmp_next_state], axis=0)
+                    tmp_action = tf.expand_dims(mini_batch[i][1], 0)   
+                    actions = tf.concat([actions, tmp_action], axis=0)
+
+                reward = np.asarray(mini_batch[i][3], dtype= np.float32)
+                done = np.asarray(mini_batch[i][4], dtype= np.float32)
+
+                rewards.append(reward)
+                dones.append(done)
+
+            dones = np.array(dones)
+            rewards = np.array(rewards).reshape(self.batch_size,)
+            # print('time to set batch', time.time()-time_check)
+            #time_check = time.time()
+            targets = self.train_critic(states, actions, next_states, rewards, dones, target_train_start)
+
+            #if np.isnan(sum(critic_loss.numpy())):
+                #print("critic_loss ",critic_loss.np())
+            #    raise ValueError("critic_loss is nan")
+            #print('time to train critic', time.time()-time_check)
+
+            #time_check = time.time()
+            actor_loss = self.train_actor(states)
+            #if np.isnan(sum(actor_loss.numpy())):
+                #print("actor_loss ",actor_loss)
+            #    raise ValueError("actor_loss is nan")
+            #print('time to train actor', time.time()-time_check)
 
 
-            else:
-                tmp_goal = tf.expand_dims(mini_batch[i][0][0],0)
-                goals = tf.concat([goals, tmp_goal], axis=0) 
-                tmp_image = tf.expand_dims(mini_batch[i][0][1],0)
-                images = tf.concat([images, tmp_image], axis=0)      
-                tmp_next_goal = tf.expand_dims(mini_batch[i][2][0],0)
-                next_goals = tf.concat([next_goals, tmp_next_goal], axis=0)
-                tmp_next_image = tf.expand_dims(mini_batch[i][2][1],0)
-                next_images = tf.concat([next_images, tmp_next_image], axis=0)
-                tmp_action = tf.expand_dims(mini_batch[i][1], 0)   
-                actions = tf.concat([actions, tmp_action], axis=0)
+    def train_critic(self, states, actions, next_states, rewards, dones, target_train_start):
 
-            reward = np.asarray(mini_batch[i][3], dtype=np.float32)
-            done = np.asarray(mini_batch[i][4], dtype=np.float32)
-            rewards.append(reward)
-            dones.append(done)
-        rewards = np.array(rewards).reshape(self.batch_size,)
-        dones = np.array(dones)
-
-        #print('goals shape', goals.shape)
-        #print('depth images shape', images.shape)
-        #print('actions shape', actions.shape)
-        #print('rewards shape', rewards.shape)
-        #print('dones shape', dones.shape)
-
-        #print('time to set batch', time.time()-time_check)
-        #time_check = time.time()
-        targets = self.train_critic(goals, images, actions, next_goals, next_images, rewards, dones, target_train_start)
-
-        #if np.isnan(sum(critic_loss.numpy())):
-        #    print("critic_loss ",critic_loss.np())
-        #    raise ValueError("critic_loss is nan")
-        #print('time to train critic', time.time()-time_check)
-
-        #time_check = time.time()
-        actor_loss = self.train_actor(goals,images)
-        #if np.isnan(sum(actor_loss.numpy())):
-        #    print("actor_loss ",actor_loss)
-        #    raise ValueError("actor_loss is nan")
-        #print('time to train actor', time.time()-time_check)
-
-    #@tf.function
-    def train_critic(self, goals, images, actions, next_goals, next_images, rewards, dones, target_train_start):
-        #time_check = time.time()
+        #tf_next_states = tf.convert_to_tensor(next_states)
         error = False
 
         try:
             if not target_train_start:
-                target_actions = self.actor_model([next_goals, next_images])
-                #target_actions = tf.reshape(target_actions, [self.batch_size, self.action_size])
+                target_actions = self.actor_model([next_states])
                 target_actions = np.asarray(target_actions, dtype= np.float32).reshape(self.batch_size, self.action_size)
             else:
-                target_actions = self.target_actor_model([next_goals, next_images])
-                #target_actions = tf.reshape(target_actions, [self.batch_size, self.action_size])
+                target_actions = self.target_actor_model([next_states])
                 target_actions = np.asarray(target_actions, dtype= np.float32).reshape(self.batch_size, self.action_size)
 
         except:
             #print("next_states ",next_states)
-            #print("tensor next_states",next_states)
+            #print("tensored next_states",tf_next_states)
             error = True
         if error:
             print('Error in train critic, target action')
-            target_actions = self.target_actor_model([next_goals, next_images])
+            target_actions = self.target_actor_model([next_states])
+        #print("target action ex", target_actions[0])
 
-
-        #print('time for target actions', time.time()-time_check)
-        #print("target action shape", target_actions.shape)
-
-        #time_check = time.time()
         if not target_train_start:
-                target_q_values = self.critic_model([next_goals, next_images, target_actions])
-                #target_q_values = tf.reshape(target_q_values, [self.batch_size,])
+                target_q_values = self.critic_model([next_states, target_actions])
                 target_q_values = np.asarray(target_q_values, dtype= np.float32).reshape(self.batch_size,)
 
         else:
-                target_q_values = self.target_critic_model([next_goals, next_images, target_actions])
-                #target_q_values = tf.reshape(target_q_values, [self.batch_size, ])
+                target_q_values = self.target_critic_model([next_states, target_actions])
                 target_q_values = np.asarray(target_q_values, dtype= np.float32).reshape(self.batch_size,)
 
-        #print('time for target q values', time.time()-time_check)
-        #time_check = time.time()
-        #dones = tf.constant(dones)
-        #rewards = tf.constant(rewards, shape=[self.batch_size,None])
-        #print("rewards.shape ",rewards.shape)
-        #print("rewards ",rewards)
-        #print("target_q_values.shape ", target_q_values.shape)
-        #print("dones.shape ", dones.shape)
-        #ds = tf.math.subtract(tf.ones(shape=dones.shape),dones)
-        #disc = tf.math.multiply(self.discount_factor,ds)
-        #disc_targ= tf.math.multiply(target_q_values,disc)
-        #targets = tf.math.add(rewards,disc_targ)
-        targets = rewards + target_q_values*self.discount_factor*(np.ones(shape=dones.shape, dtype=np.float32)-dones)
+        targets = rewards + target_q_values*self.discount_factor*(np.ones(shape=dones.shape, dtype= np.float32) - dones)
         #print("targets.shape ",targets.shape)
-        #print("targets",targets)
-
-        #tf_states = tf.convert_to_tensor(states)
-        #actions = np.stack(actions)
-        #actions = tf.convert_to_tensor(actions)
-        #targets = tf.convert_to_tensor(targets)
-        #print("states tensor shape ", states.shape)
-        #print("actions tensor shape ", actions.shape)
-        #print("action tensor ex", actions[0])
-        #print("target tensor ex", targets[0])
-        #print('time for targets', time.time()-time_check)
+        #print("targets ex",targets[0])
         #time_check = time.time()
+
         #inputs must be a list of tensors since we have a multiple inputs NN
-        self.critic_model.train_on_batch([goals, images, actions], targets)
-        #critic_loss = self.compute_critic_gradient(goals, images, actions, targets)
+        self.critic_model.train_on_batch([states, actions], targets)
+        #critic_loss = self.compute_critic_gradient(states, actions, targets)
         #print('time for critic gradients', time.time()-time_check)
         return targets
     
     @tf.function
-    def compute_critic_gradient(self, goals, images, actions, targets):
+    def compute_critic_gradient(self, states, actions, targets):
         with tf.GradientTape() as tape_critic:
-            predicted_qs = self.critic_model([goals, images, actions])
+            predicted_qs = self.critic_model([states,actions])
+            theta_critic = self.critic_model.trainable_variables
+            tape_critic.watch(theta_critic)
             critic_loss = tf.reduce_mean(tf.math.square(targets - predicted_qs))
-        critic_grad = tape_critic.gradient(critic_loss, self.critic_model.trainable_variables)
-        self.critic_optimizer.apply_gradients(zip(critic_grad, self.critic_model.trainable_variables))
+        critic_gradients = tape_critic.gradient(critic_loss, theta_critic)
+        self.critic_optimizer.apply_gradients(zip(critic_gradients, self.critic_model.trainable_variables))
         return critic_loss
 
     @tf.function
-    def train_actor(self, goals, images):
+    def train_actor(self, states):
         with tf.GradientTape() as tape:
-            a = self.actor_model([goals, images])
+            a = self.actor_model([states])
             tape.watch(a)
-            q = self.critic_model([goals,images, a])
+            q = self.critic_model([states, a])
         dq_da = tape.gradient(q, a)
         #print('Action gradient dq_qa: ', dq_da)
 
         with tf.GradientTape() as tape:
-            a = self.actor_model([goals,images])
-        da_dtheta = tape.gradient(a, self.actor_model.trainable_variables, output_gradients= -dq_da)
+            a = self.actor_model([states])
+            theta = self.actor_model.trainable_variables
+            tape.watch(theta)
+        da_dtheta = tape.gradient(a, theta, output_gradients= -dq_da)
         #print('Actor loss da_dtheta: ', da_dtheta)
         actor_gradients = list(map(lambda x: tf.divide(x, self.batch_size), da_dtheta))
         self.actor_optimizer.apply_gradients(zip(actor_gradients, self.actor_model.trainable_variables))
-        return q
+        #self.actor_optimizer.apply_gradients(zip(da_dtheta, self.actor_model.trainable_variables))
+        return q 
 
 def main(args=None):
     rclpy.init()

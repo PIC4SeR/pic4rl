@@ -92,8 +92,8 @@ class Pic4rlEnvironment(Node):
 
 		self.stage = 1
 		self.lidar_points = 359
-		self.cutoff = 5
-		#self.depth_image = np.zeros((240,320), np.uint8)
+		self.cutoff = 5		
+		self.depth_image = np.zeros((240,320), np.uint8)
 		self.bridge = CvBridge()		
 		#test variable
 		self.step_flag = False
@@ -150,7 +150,7 @@ class Pic4rlEnvironment(Node):
 
 		return  observation, reward, done
 
-	def reset(self, episode):
+	def reset(self,episode):
 		#self.destroy_subscription('cmd_vel')
 		req = Reset.Request()
 		req.goal_pos_x,req.goal_pos_y = self.get_goal(episode)
@@ -240,13 +240,10 @@ class Pic4rlEnvironment(Node):
 
 		return False, "None"
 
-	def get_observation(self, twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw,depth_image):
-		state_list = []
-		goal_dist = goal_distance/self.cutoff
-		goal_angle_norm = goal_angle/(math.pi)
-		goal_info = np.array([goal_dist, goal_angle_norm], dtype=np.float32)
-		goal_info =tf.convert_to_tensor(goal_info)
-		state_list.append((goal_info))
+	def get_observation(self, twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image):
+		#state_list = []
+		#state_list.append(float(goal_distance))
+		#state_list.append(float(goal_angle))
 
 		#state_list.append(float(self.min_obstacle_distance))
 		#state_list.append(float(self.min_obstacle_angle))
@@ -258,22 +255,23 @@ class Pic4rlEnvironment(Node):
 
 		#state_list.append(float(self.goal_distance)*np.ones(self.image_size))
 		#state_list.append(float(self.goal_angle)*np.ones(self.image_size))
-		state_list.append(depth_image)
+		#state_list.append(depth_image)
 		#state_list = np.stack(state_list)
 		#state_list = tf.convert_to_tensor(state_list, dtype=tf.float32)
 		#state_list = tf.reshape(state_list, [224,224,3])
 		#print('state size', state_list.shape)
 		#print('STATE', state_list)
 		#print(depth_image)
-		#tf_goal_distance = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_distance)
-		#tf_goal_angle = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_angle)
+		tf_goal_distance = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_distance/self.cutoff)
+		tf_goal_angle = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_angle/math.pi)
 		#print(tf_goal_distance)
-		#state_tf = tf.stack([tf_goal_distance,tf_goal_angle,depth_image], axis=2)
+		#print(tf_goal_angle)
+		state_tf = tf.stack([tf_goal_distance,tf_goal_angle,depth_image], axis=2)
 		#print('state shape: ', state_tf.shape)
 		#state_tf = tf.reshape(state_tf, [224,224,3])
 		#print('state shape reshaped: ', state_tf.shape)
 
-		return state_list
+		return state_tf
 
 	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
 		yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.8
@@ -281,19 +279,19 @@ class Pic4rlEnvironment(Node):
 		#distance_reward = 2*((2 * self.previous_goal_distance) / \
 		#	(self.previous_goal_distance + goal_distance) - 1)
 		#distance_reward = (2 - 2**(self.goal_distance / self.init_goal_distance))
+		#distance_reward = (self.previous_goal_distance - goal_distance)*30
 		distance_reward = (self.previous_goal_distance - goal_distance)*30
-		#v = twist.linear.x
+		#v = twist.linear.x 
 		#w = twist.angular.z
-		#speed_re = (v - math.fabs(w))
+		#yaw_reward = - (w/(DESIRED_CTRL_HZ) - self.goal_angle)**2 +1
 
         # Reward for avoiding obstacles
-		if self.min_obstacle_distance < 0.26:
+		if self.min_obstacle_distance < 0.25:
 			obstacle_reward = -1
 		else:
 			obstacle_reward = 0
         
-		reward = distance_reward + obstacle_reward
-
+		reward = yaw_reward + distance_reward + obstacle_reward
 
 		if event == "goal":
 			reward += 100
@@ -303,16 +301,16 @@ class Pic4rlEnvironment(Node):
 			reward += -5
 		self.get_logger().debug(str(reward))
 
-		print(
-			"Reward:", reward,
-			#"Yaw r:", yaw_reward,
-			"Distance r:", distance_reward,
-			"Obstacle r:", obstacle_reward)
+		# print(
+		# 	"Reward:", reward,
+		# 	"Yaw r:", yaw_reward,
+		# 	"Distance r:", distance_reward,
+		# 	"Obstacle r:", obstacle_reward)
 		return reward
 
-	def get_goal(self,episode):
+	def get_goal(self, episode):
 		if self.stage != 4:
-			if episode < 6 or episode % 25==0:
+			if episode < 5 or episode % 25 == 0:
 				x = 0.35
 				y = 0.0
 			else:		
@@ -324,7 +322,7 @@ class Pic4rlEnvironment(Node):
 			index = random.randrange(0, 10)
 			x = goal_pose_list[index][0]
 			y = goal_pose_list[index][1]
-		print("Goal pose: ", x, y)
+			print("Goal pose: ", x, y)
 
 		self.get_logger().info("New goal")
 		#self.get_logger().info("New goal: (x,y) : " + str(x) + "," +str(y))
@@ -404,9 +402,9 @@ class Pic4rlEnvironment(Node):
 		self.depth_image_raw = np.array(depth_image_raw, dtype= np.float32)
 		#savetxt('/home/maurom/depth_images/text_depth_image_raw.csv', depth_image_raw, delimiter=',')
 		#np.save('/home/maurom/depth_images/depth_image.npy', depth_image_raw)
-		#cv2.imwrite('/home/maurom/depth_images/d_img_01.png', self.depth_image_raw)
+		#cv2.imwrite('/home/mauromartini/mauro_ws/depth_images/d_img_01.png', self.depth_image_raw)
 
-    #@tf.function
+
 	def process_depth_image(self):
 		depth_image = np.array(self.depth_image_raw, dtype= np.float32)
 		#savetxt('/home/maurom/depth_images/text_depth_image.csv', depth_image, delimiter=',')
@@ -450,6 +448,7 @@ class Pic4rlEnvironment(Node):
         #for i in range(3):
         #    img[:,:,i] = cv2.equalizeHist(img[:,:,i])
 		return img 
+
 
 	def process_odom(self, odom_msg):
 		#self.previous_pose.pose.pose.position.x = odom_msg.pose.pose.position.x
