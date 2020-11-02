@@ -86,7 +86,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         #self.evalutate_Hz(init=True)
 
         # State size and action size
-        self.state_size = 10 #goal distance, goal angle, lidar points
+        self.state_size = 38 #goal distance, goal angle, lidar points
         self.action_size = 2 #linear velocity, angular velocity
         self.episode_size = 5000
 
@@ -95,11 +95,12 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.discount_factor = 0.99
         self.learning_rate = 0.00025
         self.epsilon = 1.0
-        self.epsilon_decay = 0.996
+        self.epsilon_decay = 0.998
         self.epsilon_min = 0.05
         self.batch_size = 64
         self.train_start = 64
         self.update_target_model_start = 128
+        self.score_list = []
 
         # Replay memory
         self.memory = collections.deque(maxlen=1000000)
@@ -111,12 +112,13 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.target_critic_model, _ = self.build_critic()
 
        # Load saved models
-        self.load_model = False
-        self.load_episode = 0
+        self.load_model = True
+        self.load_episode = 1580
         self.model_dir_path = os.path.dirname(os.path.realpath(__file__))
         self.model_dir_path = self.model_dir_path.replace(
             '/pic4rl/pic4rl/pic4rl',
             '/pic4rl/pic4rl/models/agent_model')
+        self.results_path = '/home/mauromartini/mauro_ws/scores/lidar'
 
         self.actor_model_path = os.path.join(
             self.model_dir_path,
@@ -171,11 +173,10 @@ class Pic4rlTraining(Pic4rlEnvironment):
             init = True
             score = 0
 
-            # Reset ddpg environment
+            # Reset environment
             state = self.env.reset(episode)
-            state = np.asarray(state, dtype=np.float32)
+            #state = np.array(state, dtype=np.float32)
             #print('Goal distance, goal angle, lidar points', state)
-            #time.sleep(1.0)
 
             while not done:
                 local_step += 1
@@ -194,7 +195,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
                     #print("Action size:", action.shape)
 
                 next_state, reward, done, info = self.env.step(action)
-                next_state = np.asarray(next_state, dtype=np.float32)
+                #next_state = np.array(next_state, dtype=np.float32)
                 #print('next state:', next_state)
                 score += reward
 
@@ -228,13 +229,17 @@ class Pic4rlTraining(Pic4rlEnvironment):
                         param_keys = ['epsilon']
                         param_values = [self.epsilon]
                         param_dictionary = dict(zip(param_keys, param_values))
+                        self.score_list.append(score)
 
                 # While loop rate
                 #current_hz = 1/self.avg_cmd_vel[0]
                 #time.sleep(max((current_hz-DESIRED_CTRL_HZ),0))
 
             # Update result and save model every 20 episodes
-            if episode > 400 and episode % 20 == 0:
+            if episode > 600 and episode % 20 == 0:
+                with open(os.path.join(self.results_path,'score'+str(self.stage)+'_episode'+str(episode)+'.json'), 'w') as outfile:
+                    json.dump(self.score_list, outfile)
+
                 self.actor_model_path = os.path.join(
                     self.model_dir_path,
                     'actor_stage'+str(self.stage)+'_episode'+str(episode)+'.h5')
@@ -329,7 +334,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 #print("rnd_action",rnd_action)
                 return rnd_action
         else:
-                state = np.asarray(state, dtype= np.float32)
+                #state = np.asarray(state, dtype= np.float32)
                 #print("state in prediction:",state)
                 pred_action = self.actor_model(state.reshape(1, len(state)))
                 print("pred_action", pred_action)

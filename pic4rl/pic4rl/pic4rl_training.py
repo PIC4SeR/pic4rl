@@ -103,8 +103,8 @@ class Pic4rlTraining(Pic4rlEnvironment):
         # State size and action size
         self.state_size = 3 #goal distance, goal angle, lidar points
         self.action_size = 2 #linear velocity, angular velocity
-        self.height = 64
-        self.width = 64
+        self.height = 60
+        self.width = 80
         self.episode_size = 5000
 
         # DDPG hyperparameter
@@ -117,9 +117,10 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.batch_size = 64
         self.train_start = 64
         self.update_target_model_start = 128
+        self.score_list = []
 
         # Replay memory
-        self.memory = collections.deque(maxlen=200000)
+        self.memory = collections.deque(maxlen=160000)
 
         # Build actor and critic models and target models
         self.actor_model, self.actor_optimizer = self.build_actor()
@@ -134,6 +135,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.model_dir_path = self.model_dir_path.replace(
             '/pic4rl/pic4rl/pic4rl',
             '/pic4rl/pic4rl/models/agent_model')
+        self.results_path = '/home/mauromartini/mauro_ws/scores/camera'
 
         self.actor_model_path = os.path.join(
             self.model_dir_path,
@@ -182,7 +184,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
             done = False
             init = True
             score = 0
-
+            
             #time_check = time.time()
             # Reset ddpg environment
             state = self.env.reset(episode)
@@ -256,30 +258,35 @@ class Pic4rlTraining(Pic4rlEnvironment):
                         param_keys = ['epsilon']
                         param_values = [self.epsilon]
                         param_dictionary = dict(zip(param_keys, param_values))
+                        self.score_list.append(score)
+                        #print(self.score_list)
 
-                # While loop rate
-                #current_hz = 1/self.avg_cmd_vel[0]
-                #time.sleep(max((current_hz-DESIRED_CTRL_HZ),0))
+				# While loop rate
+				#current_hz = 1/self.avg_cmd_vel[0]
+				#time.sleep(max((current_hz-DESIRED_CTRL_HZ),0))
 
             # Update result and save model every 10 episodes
-            if episode > 400 and episode % 20 == 0:
-                self.actor_model_path = os.path.join(
-                    self.model_dir_path,
-                    'actor_stage'+str(self.stage)+'_episode'+str(episode)+'.h5')
-                self.actor_model.save(self.actor_model_path)
-                with open(os.path.join(
-                    self.model_dir_path,
-                        'actor_stage'+str(self.stage)+'_episode'+str(episode)+'.json'), 'w') as outfile:
-                    json.dump(param_dictionary, outfile)
+            if episode > 500 and episode % 20 == 0:
+            	with open(os.path.join(self.results_path,'score'+str(self.stage)+'_episode'+str(episode)+'.json'), 'w') as outfile:
+            		json.dump(self.score_list, outfile)
 
-                self.critic_model_path = os.path.join(
-                    self.model_dir_path,
-                    'critic_stage'+str(self.stage)+'_episode'+str(episode)+'.h5')
-                self.critic_model.save(self.critic_model_path)
-                with open(os.path.join(
-                    self.model_dir_path,
-                        'critic_stage'+str(self.stage)+'_episode'+str(episode)+'.json'), 'w') as outfile:
-                    json.dump(param_dictionary, outfile)
+            	self.actor_model_path = os.path.join(
+            		self.model_dir_path,
+            		'actor_stage'+str(self.stage)+'_episode'+str(episode)+'.h5')
+            	self.actor_model.save(self.actor_model_path)
+            	with open(os.path.join(
+            	    self.model_dir_path,
+            	        'actor_stage'+str(self.stage)+'_episode'+str(episode)+'.json'), 'w') as outfile:
+            	    json.dump(param_dictionary, outfile)
+
+            	self.critic_model_path = os.path.join(
+            	    self.model_dir_path,
+            	    'critic_stage'+str(self.stage)+'_episode'+str(episode)+'.h5')
+            	self.critic_model.save(self.critic_model_path)
+            	with open(os.path.join(
+            	    self.model_dir_path,
+            	        'critic_stage'+str(self.stage)+'_episode'+str(episode)+'.json'), 'w') as outfile:
+            	    json.dump(param_dictionary, outfile)
 
             # Epsilon (exploration policy)
             if self.epsilon > self.epsilon_min:
@@ -302,7 +309,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
 
     def build_actor(self):
         goal_input = Input(shape=(2,))
-        depth_image_input = Input(shape=(self.width, self.height,1,))
+        depth_image_input = Input(shape=(self.height, self.width, 1,))
         initializer = HeUniform()
         #last_init = tf.keras.initializers.glorot_uniform()
         #depth_image_norm = BatchNormalization()(depth_image_input)
@@ -313,6 +320,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         c2p = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(c2)
         c3 = Conv2D(64, 3, strides=(2, 2), activation='relu', kernel_initializer = initializer)(c2p)
         c4 = Conv2D(64, 3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(c3)
+        #c5 = Conv2D(128, 3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(c4)
         h0 = GlobalAveragePooling2D()(c4)
 
         fc1 = Dense(128, activation='relu', kernel_initializer = initializer)(h0)
@@ -325,7 +333,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         Angular_velocity = Dense(1, activation = 'tanh')(out1)*MAX_ANG_SPEED
         output = concatenate([Linear_velocity,Angular_velocity])
 
-        model = Model(inputs=[goal_input, depth_image_input], outputs=[output])
+        model = Model(inputs=[goal_input, depth_image_input], outputs=[output], name='Actor')
         adam = Adam(lr= 0.0001)
         model.summary()
 
@@ -333,7 +341,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
 
     def build_critic(self):
         goal_input = Input(shape=(2,))
-        depth_image_input = Input(shape=(self.width, self.height,1,))    
+        depth_image_input = Input(shape=(self.height, self.width, 1,))  
         actions_input = Input(shape=(self.action_size,))
 
         initializer = HeUniform()
@@ -346,11 +354,13 @@ class Pic4rlTraining(Pic4rlEnvironment):
         c2p = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(c2)
         c3 = Conv2D(64,3, strides=(2, 2), activation='relu', kernel_initializer = initializer)(c2p)
         c4 = Conv2D(64,3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(c3)
+        #c5 = Conv2D(128,3, strides=(1, 1), activation='relu', kernel_initializer = initializer)(c4)
         h0 = GlobalAveragePooling2D()(c4)
 
-        fc1 = Dense(64, activation='relu', kernel_initializer = initializer)(h0)
+        fc1 = Dense(128, activation='relu', kernel_initializer = initializer)(h0)
+        fc2 = Dense(64, activation='relu', kernel_initializer = initializer)(fc1)
 
-        conc1 = concatenate([goal_input,fc1])
+        conc1 = concatenate([goal_input,fc2])
         h_state = Dense(128, activation='relu', kernel_initializer = initializer)(conc1)
         #h_action = Dense(64, activation='relu', kernel_initializer = initializer)(actions_input)
         conc2 = concatenate([h_state, actions_input])
@@ -358,7 +368,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         #concat_h1 = Dense(128, activation='relu', kernel_initializer = initializer)(concat_h1)
 
         output = Dense(1, activation='linear')(concat_h1)
-        model = Model(inputs=[goal_input, depth_image_input, actions_input], outputs=[output])
+        model = Model(inputs=[goal_input, depth_image_input, actions_input], outputs=[output], name = 'Critic')
         adam  = Adam(lr=0.0008)
         model.compile(loss="mse", optimizer=adam)
         model.summary()
@@ -386,7 +396,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 return rnd_action
         else:
             goal = tf.reshape(state[0], [1,2])
-            depth_image = tf.reshape(state[1], [1,self.width,self.height])
+            depth_image = tf.reshape(state[1], [1,self.height, self.width])
             pred_action = self.actor_model([goal, depth_image])
             print("pred_action", pred_action)
             return [pred_action[0][0], pred_action[0][1]]

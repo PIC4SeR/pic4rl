@@ -87,8 +87,12 @@ class Pic4rlEnvironment(Node):
 		self.episode_step = 0
 		self.goal_pos_x = None
 		self.goal_pos_y = None
+		self.goal_index = 0
 		self.previous_twist = None
 		self.previous_pose = Odometry()
+		self.previous_pos = Odometry()
+		self.total_distance = 0
+		self.goal_distance = 0
 
 		self.stage = 1
 		self.lidar_points = 359
@@ -119,7 +123,7 @@ class Pic4rlEnvironment(Node):
 		twist.angular.z = float(action[1])
 		observation, reward, done = self._step(twist)
 		info = None
-		return observation, reward, done, info
+		return observation, reward, done, info, self.total_distance, self.goal_distance
 
 	def _step(self, twist=Twist(), reset_step = False):
 		#After environment reset sensors data are not instaneously available
@@ -132,7 +136,7 @@ class Pic4rlEnvironment(Node):
 			state = self.get_state()
 			data_received = state.data_received
 
-		lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image = self.process_state(state)
+		lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image = self.process_state(state, reset_step)
 
 		# Check events (failure,timeout, success)
 		done, event = self.check_events(lidar_measurements, goal_distance, self.episode_step)
@@ -144,6 +148,7 @@ class Pic4rlEnvironment(Node):
 		else:
 			reward = None
 			observation = None
+			self.path_length = 0
 
 		# Send observation and reward
 		self.update_state(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event)
@@ -176,7 +181,7 @@ class Pic4rlEnvironment(Node):
 		self.get_logger().debug("Performing null step to reset variables")
 		_,_,_, = self._step(reset_step = True)
 		observation,_,_, = self._step()
-		return observation
+		return observation, self.goal_pose_x, self.goal_pose_y
 
 	"""#############
 	Secondary functions (used in main functions)
@@ -203,7 +208,7 @@ class Pic4rlEnvironment(Node):
 		self.get_logger().debug("State received ...")
 		return state
 
-	def process_state(self,state):
+	def process_state(self,state, reset_step):
 
 		self.episode_step += 1
 
@@ -213,7 +218,7 @@ class Pic4rlEnvironment(Node):
 		lidar_measurements = self.process_laserscan(lidar_measurements)
 
 		#from Odometry msg to x,y, yaw, distance, angle wrt goal
-		goal_distance, goal_angle, pos_x, pos_y, yaw = self.process_odom(state.odom)
+		goal_distance, goal_angle, pos_x, pos_y, yaw = self.process_odom(state.odom, reset_step)
 
 		#process Depth Image from sensor msg
 		depth_image = self.process_depth_image()
@@ -222,7 +227,7 @@ class Pic4rlEnvironment(Node):
 
 	def check_events(self, lidar_measurements, goal_distance, step):
 
-		min_range = 0.22
+		min_range = 0.15
 
 		if  0.05 <min(lidar_measurements) < min_range:
 			# Collision
@@ -234,7 +239,7 @@ class Pic4rlEnvironment(Node):
 			self.get_logger().info('Goal')
 			return True, "goal"
 
-		if step >= 500:
+		if step >= 1000:
 			#Timeout
 			self.get_logger().info('Timeout')
 			return True, "timeout"
@@ -252,12 +257,11 @@ class Pic4rlEnvironment(Node):
 		# state_list.append((goal_info))
 		# state_list.append(depth_image)
 
-		#return state_list
+		# return state_list
 
 		#WITH LIDAR
 		state_list = []
 		state_list.append(float(goal_distance))
-
 		state_list.append(float(goal_angle))
 
 		#state_list.append(float(self.min_obstacle_distance))
@@ -266,65 +270,30 @@ class Pic4rlEnvironment(Node):
 			state_list.append(float(point))
 			#print(point)
 		state = np.array(state_list,dtype = np.float32)
-		#lidar_measurements = np.array(lidar_measurements, dtype = np.float32)
-		#state = np.array([goal_distance, goal_angle, lidar_measurements], dtype = np.float32)
 		return state
 
 		
-
-	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
-		#if self.episode < 400:
-		#	yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.8
-		#else:
-		#	yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.2
-        #yaw_reward = - (1/(1.2*DESIRED_CTRL_HZ) - self.goal_angle)**2 +1
-		#distance_reward = 2*((2 * self.previous_goal_distance) / \
-		#	(self.previous_goal_distance + goal_distance) - 1)
-		#distance_reward = (2 - 2**(self.goal_distance / self.init_goal_distance))
-		yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.8
-		distance_reward = (self.previous_goal_distance - goal_distance)*30
-		#v = twist.linear.x
-		#w = twist.angular.z
-		#speed_re = (3*v - math.fabs(w))
-
-        # Reward for avoiding obstacles
-		if self.min_obstacle_distance < 0.24:
-			obstacle_reward = -1
-		else:
-			obstacle_reward = 0
-        
-		reward =  yaw_reward + distance_reward + obstacle_reward
-
+	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):   
+		reward = 0
 
 		if event == "goal":
 			reward += 100
 		elif event == "collision":
-			reward += -10
+			reward += -50
 		elif event == "timeout":
-			reward += -5
+			reward += -25
 		self.get_logger().debug(str(reward))
 
-		print(
-			"Reward:", reward,
-			"Yaw r:", yaw_reward,
-			"Distance r:", distance_reward,
-			"Obstacle r:", obstacle_reward)
+		#print("Score:", reward)
 		return reward
 
 	def get_goal(self,episode):
-		if self.stage != 4:
-			if episode < 6 or episode % 25==0:
-				x = 0.35
-				y = 0.0
-			else:		
-				x = random.randrange(-15, 16) / 10.0
-				y = random.randrange(-15, 16) / 10.0
-		else:
-			goal_pose_list = [[1.0, 0.0], [2.0, -1.5], [0.0, -2.0], [2.0, 2.0], [0.8, 2.0],
-							  [-1.9, 1.9], [-1.9, 0.2], [-1.9, -0.5], [-2.0, -2.0], [-0.5, -1.0]]
-			index = random.randrange(0, 10)
-			x = goal_pose_list[index][0]
-			y = goal_pose_list[index][1]
+		goal_pose_list = [[2.0, -1.5],[1.2, -1.8],[0.2, -2.0], [2.0, 2.0], [0.8, 2.0],
+						 [-1.9, 1.2], [-1.9, -0.5], [-2.0, -2.0]]
+
+		x = goal_pose_list[self.goal_index][0]
+		y = goal_pose_list[self.goal_index][1]
+		self.goal_index += 1
 		print("Goal pose: ", x, y)
 
 		self.get_logger().info("New goal")
@@ -456,9 +425,11 @@ class Pic4rlEnvironment(Node):
         #    img[:,:,i] = cv2.equalizeHist(img[:,:,i])
 		return img 
 
-	def process_odom(self, odom_msg):
-		#self.previous_pose.pose.pose.position.x = odom_msg.pose.pose.position.x
-		#self.previous_pose.pose.pose.position.y = odom_msg.pose.pose.position.y
+	def process_odom(self, odom_msg, reset_step):
+		if(reset_step):
+			self.previous_pos_x = odom_msg.pose.pose.position.x
+			self.previous_pos_y = odom_msg.pose.pose.position.y
+			self.total_distance = 0
 
 		pos_x = odom_msg.pose.pose.position.x
 		pos_y = odom_msg.pose.pose.position.y
@@ -482,6 +453,15 @@ class Pic4rlEnvironment(Node):
 
 		self.goal_distance = goal_distance
 		self.goal_angle = goal_angle
+		#print('Goal distance:', self.goal_distance)
+
+		d_increment = math.sqrt((pos_x - self.previous_pos_x)**2 + (pos_y - self.previous_pos_y)**2)
+		self.total_distance = self.total_distance + d_increment
+		#print("Total distance traveled is ", self.total_distance)
+
+
+		self.previous_pose_x = pos_x
+		self.previous__pose_y = pos_y
 
 		return goal_distance, goal_angle, pos_x, pos_y, yaw
 
