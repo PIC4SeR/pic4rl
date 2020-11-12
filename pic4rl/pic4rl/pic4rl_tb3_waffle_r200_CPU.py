@@ -76,9 +76,15 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 		lidar_low = [0] * n_points
 		lidar_high = [3.5] * n_points
 
+
+		#Camera points
+		n_points = 60
+		camera_low = [0] * n_points
+		camera_high = [3.5] * n_points
+
 		# Distance
 		distance_low = [0]
-		distance_high = [10]
+		distance_high = [5]
 
 		# Angle
 		angle_low = [-math.pi]
@@ -86,10 +92,12 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 
 		self.observation_space = spaces.Box(
 			low = np.array(lidar_low + 
+							camera_low +
 							distance_low +
 							angle_low,
 							dtype=np.float32),
 			high = np.array(lidar_high + 
+							camera_high +
 							distance_high +
 							angle_high,
 							dtype=np.float32),
@@ -131,7 +139,7 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 		observation += self.process_odom() 
 
 		# Reducing lidar ranges number
-		#observation += self.process_laserscan()
+		observation += self.process_laserscan()
 
 		# Selecting some points from depth camera r200
 		observation += self.process_depth_image()
@@ -164,7 +172,7 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 		done = False
 		done_info = 0
 
-		if min(self.state["scan_ranges"]) <= 0.13:
+		if min(self.state["scan_ranges"]) <= 0.19:
 			"""
 			self.state -> has all 359 lidar ranges
 			self.observation -> has reduced number of ldiar ranges
@@ -193,7 +201,10 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 		Same holds for state_history
 		"""
 		if not done:
-			distance_delta = self.observation_history[0]["goal_distance"] - self.observation_history[1]["goal_distance"] 
+			distance_delta = self.observation_history[0]["goal_distance"] - self.observation_history[1]["goal_distance"] 	
+			#The reward is computed to give higher negatives values when distance increase. Secondo term is 
+			# put to make the higher reward equal to 0
+			distance_reward = -(0.01/(distance_delta+0.05)) - (0.01/(0.04+0.05)) 
 			return distance_delta
 		else:
 			if done_info == 1:
@@ -204,6 +215,7 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 				return -5
 			else:
 				raise ValueError("done_info is out of range")
+
 
 	def process_odom(self):
 		goal_pos_x = self.state["goal_pos_x"]
