@@ -15,6 +15,22 @@ Pic4rl
 
 ## Installation procedure
 ...
+### ROS2 is required
+On ubuntu 18.04, install folliwing https://index.ros.org/doc/ros2/Installation/Dashing/Linux-Install-Debians/
+
+
+Gazebo 9 i required.
+Install following http://gazebosim.org/tutorials?cat=install&tut=install_ubuntu&ver=9.0
+
+Gazebo 9 should also be configured, as paths have to be added (or temporarily sourced each time).
+gazebo must be sourced:
+```
+source /usr/share/gazebo/setup.sh
+```
+pic4rl models (or other models) should be added to GAZEBO_MODEL_PATH:
+```
+export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:~/ros_2_workspace/src/pic4rl/pic4rl_gazebo/models
+```
 
 ## User Guide
 ...
