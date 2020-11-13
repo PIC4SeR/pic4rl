@@ -20,6 +20,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            #'my_script = pic4rl_sensors.lidar:main',
+            'test_sensor = pic4rl_sensors.test_sensor:main',
+            'laser_scan_sensor = pic4rl_sensors.laser_scan_sensor:main'
         ],
     },
 )
