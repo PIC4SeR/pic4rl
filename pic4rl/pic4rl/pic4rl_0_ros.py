@@ -25,6 +25,8 @@ class Pic4rlROS(Node):
 	def spin_with_timeout(self,	timeout_sec = 0.1):
 		if not self.other_nodes_added:
 			self.executor.add_node(self)
+			for sensor in self.sensors:
+				self.executor.add_node(sensor)
 			#self.executor.add_node(self.sensor)
 
 		"""This function provides a way to spin only for a certain

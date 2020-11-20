@@ -2,11 +2,6 @@
 
 """
 This class is to be inherited by all the pic4rl enviornments  
-	Ros
-	Gym
-	Rl related
-	Sensors
-	Gazebo 
 """
 
 import rclpy
@@ -14,106 +9,102 @@ from rclpy.node import Node
 
 from gazebo_msgs.srv import DeleteEntity, SpawnEntity
 from std_srvs.srv import Empty
-from pic4rl.pic4rl_1_gazebo import Pic4rlGazebo
 
 import numpy as np
 import time 
 import collections
 
-class Pic4rlGym(Pic4rlGazebo):
-	def __init__(self,
-				executor):
-		super().__init__(
-				executor)
-		self.get_logger().info('Class: Pic4rlGym')
-		self.local_step = 0
-		self.global_step = 0
-		self.episode = 0
+from rclpy.executors import MultiThreadedExecutor
 
-	def step(self,action):
-			self.global_step += 1
-			self.local_step += 1
-
-			"""This method should provide the command to be sent to gazebo
-			and handled interanlly via gazebo_step method
-			"""
-			self.get_logger().debug("unpausing...")
-			self.unpause()
-			self.get_logger().debug("publishing twist...")
-
-			self._step(action)
-
-			self.spin_with_timeout()
-			self.get_logger().debug("pausing...")
-			self.pause()	
-
-			#self.update_state() # Take new data from sensor, clean them 
-
-			#observation, done, done_info = self.get_observation()
-			#reward = self.get_reward(done, done_info)
-			#info = None
-
-			#return observation, reward, done, info
-
-	# NotImplemented
-	def _step(self, action):
-		"""
-		This method must be implemented in the specific 
-		environment
-		e.g. for mobile robots it should publish a 
-		twist message over /cmd_vel topic, hence 
-		mapping the action from the rl agent to 
-		the twist message
-		"""
-
-		raise NotImplementedError
-
-	def reset(self):
-		self.episode += 1
-
-		self.get_logger().debug("Reset request received ...")
-		self.get_logger().debug("Resetting world ...")
-		self.get_logger().info("Reset...")
-		self.reset_state()
-		self.reset_world()
-		self.get_goal()
-		self.unpause()
-		self.spin_with_timeout()
-		self.pause()
-		#data_retrieved = False
-		#while not data_retrieved:
-		#	self.unpause()
-		#	self.spin_with_timeout()
-		#	self.pause()	
-		#	try:
-		#		for sensor in self.sensors:
-		#			sensor.data
-		#		data_retrieved = True
-		#	except:
-		#		self.get_logger().debug("Waiting for data...")
-		#		pass
-		#self.update_state()
-		#observation = self.get_only_observation()
-		#self.observation_history.append(self.observation.copy())
-		#return observation
+import pic4rl.include.pic4rl_utils
+from pic4rl.include.pic4rl_utils import SpinWithTimeout
 
 
-	# NotImplemented
-	def render(self):
+class Pic4rl(Node):
+	def __init__(self):
+		super().__init__("pic4rl")
+		rclpy.logging.set_logger_level('pic4rl', 10)
+		self.initialization()
+
+	"""###########
+	# TOP LEVEL
+	###########"""
+
+	def initialization(self,args=None):
+		self.get_logger().debug('Initialization ...')
+		self.initialize_ros()
+
+	def step(self,args=None):
 		pass
-		#raise NotImplementedError
+
+	def reset(self,args=None):
+		pass
 
 
+	"""#
+	# -1
+	#"""
 
-	"""def main(args=None):
-		rclpy.init()
-		pic4rl_sensors = Pic4rlSensors()
+	# INITIALIZATION
 
-		pic4rl_sensors.get_logger().info('Node spinning ...')
-		rclpy.spin_once(pic4rl_sensors)
+	def initialize_ros(self,args=None):
+		SpinWithTimeout(self)
 
-		pic4rl_sensors.destroy()
-		rclpy.shutdown()
+	def initialize_gazebo_services(self,args=None):
+		pass
 
-	if __name__ == '__main__':
-		main()"""
+	def initialize_sensors(self,args=None):
+		pass
+
+
+	# RESET
+
+	# Reset Gazebo
+	def reset_gazebo(self,args=None):
+		pass
+
+	# Collect data by node spinning
+	def collect_data_by_spinning(self,args=None):
+		pass
+
+	# Get new state from gazebo 
+	def raw_data_to_state(self,args=None):
+		pass
+
+	# Process state and obtain observation
+	def get_observation(self,args=None):
+		pass
+
+	# STEP
+
+	# Convert action to Twist(or other) msg and send to gazebo
+	def send_action_to_Gazebo(self,args=None):
+		pass
+
+	# Collect data by node spinning
+	# See in RESET
+
+	# Process state and obtain observation
+	# See in RESET
+
+	# Compute reward from state (history)
+	def get_reward(self,args=None):
+		pass
+
+	def __function__(self,args=None):
+		pass
+
+def main(args=None):
+	rclpy.init()
+	executor = MultiThreadedExecutor(num_threads=4)
+	pic4rl = Pic4rl()
+#	rclpy.spin()
+
+	pic4rl.get_logger().info('Node spinning once...')
+	#rclpy.spin_once(pic4rl)
+	pic4rl.spin_with_timeout()
+	pic4rl.destroy_node()
+	rclpy.shutdown()
+
+if __name__ == '__main__':
+	main()
