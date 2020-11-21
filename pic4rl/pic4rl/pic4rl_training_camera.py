@@ -79,9 +79,9 @@ import gc
 from pic4rl.pic4rl_environment import Pic4rlEnvironment
 
 #with tf.device('/CPU:0'):
-MAX_LIN_SPEED = 0.2
-MAX_ANG_SPEED = 1
-DESIRED_CTRL_HZ = 1
+MAX_LIN_SPEED = 0.8
+MAX_ANG_SPEED = 2
+DESIRED_CTRL_HZ = 5
 
 class Pic4rlTraining(Pic4rlEnvironment):
     def __init__(self):
@@ -97,7 +97,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.env = Pic4rlEnvironment()
         #self.stage = 1
 	
-        #self.avg_cmd_vel = [0.2,int(0)]
+        #self.avg_cmd_vel = [0.4,int(0)]
         #self.evalutate_Hz(init=True)
 
         # State size and action size
@@ -108,25 +108,25 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.episode_size = 5000
 
         # DDPG hyperparameter
-        self.tau = 0.001
+        self.tau = 0.01
         self.discount_factor = 0.99
-        self.learning_rate = 0.00025
         self.epsilon = 1.0
         self.epsilon_decay = 0.998
         self.epsilon_min = 0.05
         self.batch_size = 64
         self.train_start = 64
-        self.update_target_model_start = 128
+        self.use_target_model = 128
         self.score_list = []
 
         # Replay memory
-        self.memory = collections.deque(maxlen=160000)
+        self.memory = collections.deque(maxlen=170000)
 
         # Build actor and critic models and target models
         self.actor_model, self.actor_optimizer = self.build_actor()
         self.critic_model, self.critic_optimizer = self.build_critic()
         self.target_actor_model, _ = self.build_actor()
         self.target_critic_model, _ = self.build_critic()
+        self.update_target_model()
 
        # Load saved models
         self.load_model = False
@@ -135,7 +135,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.model_dir_path = self.model_dir_path.replace(
             '/pic4rl/pic4rl/pic4rl',
             '/pic4rl/pic4rl/models/agent_model')
-        self.results_path = '/home/mauromartini/mauro_ws/scores/camera'
+        self.results_path = '/home/mauromartini/mauro_ws/scores/camera/rosbot'
 
         self.actor_model_path = os.path.join(
             self.model_dir_path,
@@ -203,7 +203,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
                     state = next_state
                     action = self.get_action(state)
                     if np.any(np.isnan(action)):
-                        print("Action:", action)
+                        print("Action is nan:", action)
                         action = tf.constant([0.0, 0.0])
                     #print("Action:", action)
                     #print("Action size:", action.shape)
@@ -223,31 +223,43 @@ class Pic4rlTraining(Pic4rlEnvironment):
                     self.append_sample(state, action, next_state, reward, done)
 
                     # Train model
-                    if global_step >= self.update_target_model_start:
-                        #print('Update target model, global step:', global_step)
-                        #time_start = time.time()
-                        self.train_model(True)
-                        #time_diff = time.time() - time_start
-                        #print('Total time for training:', time_diff)
-                    
-                    elif global_step >= self.train_start:
-                        #print('Start training. Global step:', global_step)
-                        #time_start = time.time()
-                        self.train_model()
-                        #time_diff = time.time() - time_start
-                        #print('Total time for training:', time_diff)
+                    # if global_step >= self.use_target_model:
+                    #     #print('Update target model, global step:', global_step)
+                    #     #time_start = time.time()
+                    #     self.train_model(True)
+                    #     #time_diff = time.time() - time_start
+                    #     #print('Total time for training:', time_diff)
 
-                    if done:
-                        # Update target neural network
+                    #     # UPDATE TARGET NETWORKS
+                    #     #HARD UPDATE
+                    #     #self.update_target_model()
+                    #     #print('Updating target models')
+
+                    #     #SOFT UPDATE
+                    #     #time_start = time.time()
+                    #     self.target_actor_model = self.update_target_model_soft(self.actor_model, self.target_actor_model, self.tau)
+                    #     self.target_critic_model = self.update_target_model_soft(self.critic_model, self.target_critic_model, self.tau)
+                    #     #print('time for target model update:', time.time()-time_check)
+                    
+                    if global_step >= self.train_start:
+                        #print('Start training. Global step:', global_step)
+                        #time_check = time.time()
+                        self.train_model(True)
+                        #print('Total time for training:', time.time() - time_check)
+
+                        # UPDATE TARGET NETWORKS
                         #HARD UPDATE
                         #self.update_target_model()
                         #print('Updating target models')
 
                         #SOFT UPDATE
-                        #time_start = time.time()
+                        #time_check= time.time()
                         self.target_actor_model = self.update_target_model_soft(self.actor_model, self.target_actor_model, self.tau)
                         self.target_critic_model = self.update_target_model_soft(self.critic_model, self.target_critic_model, self.tau)
                         #print('time for target model update:', time.time()-time_check)
+
+                    if done:
+
                         print(
                             "Episode:", episode,
                             "score:", score,
@@ -265,7 +277,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
 				#current_hz = 1/self.avg_cmd_vel[0]
 				#time.sleep(max((current_hz-DESIRED_CTRL_HZ),0))
 
-            # Update result and save model every 10 episodes
+            # Update result and save model every 20 episodes
             if episode > 500 and episode % 20 == 0:
             	with open(os.path.join(self.results_path,'score'+str(self.stage)+'_episode'+str(episode)+'.json'), 'w') as outfile:
             		json.dump(self.score_list, outfile)
@@ -369,7 +381,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
 
         output = Dense(1, activation='linear')(concat_h1)
         model = Model(inputs=[goal_input, depth_image_input, actions_input], outputs=[output], name = 'Critic')
-        adam  = Adam(lr=0.0008)
+        adam  = Adam(lr=0.001)
         model.compile(loss="mse", optimizer=adam)
         model.summary()
 
@@ -398,7 +410,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
             goal = tf.reshape(state[0], [1,2])
             depth_image = tf.reshape(state[1], [1,self.height, self.width])
             pred_action = self.actor_model([goal, depth_image])
-            print("pred_action", pred_action)
+            #print("pred_action", pred_action)
             return [pred_action[0][0], pred_action[0][1]]
 
     def append_sample(self, state, action, next_state, reward, done):

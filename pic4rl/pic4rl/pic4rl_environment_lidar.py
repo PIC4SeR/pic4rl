@@ -50,7 +50,7 @@ class Pic4rlEnvironment(Node):
 	def __init__(self):
 		super().__init__('pic4rl_environment')
 		# To see debug logs
-		#rclpy.logging.set_logger_level('omnirob_rl_environment', 10)
+		rclpy.logging.set_logger_level('pic4rl_environment', 10)
 
 		"""************************************************************
 		** Initialise ROS publishers and subscribers
@@ -62,11 +62,11 @@ class Pic4rlEnvironment(Node):
 			'cmd_vel',
 			qos)
 
-		self.Image_sub = self.create_subscription(
-			Image,
-            '/intel_realsense_r200_depth/depth/image_raw',
-            self.DEPTH_callback,
-            qos_profile=qos_profile_sensor_data)
+		# self.Image_sub = self.create_subscription(
+		# Image,
+  #            '/camera/depth/image_raw',
+  #            self.DEPTH_callback,
+  #            qos_profile=qos_profile_sensor_data)
 
 		# Initialise client
 		#self.send_twist = self.create_client(Twist, 'send_twist')
@@ -92,8 +92,8 @@ class Pic4rlEnvironment(Node):
 
 		self.stage = 1
 		self.lidar_points = 359
-		self.cutoff = 5		
-		self.depth_image = np.zeros((240,320), np.uint8)
+		self.cutoff = 5
+		#self.depth_image = np.zeros((240,320), np.uint8)
 		self.bridge = CvBridge()		
 		#test variable
 		self.step_flag = False
@@ -132,7 +132,7 @@ class Pic4rlEnvironment(Node):
 			state = self.get_state()
 			data_received = state.data_received
 
-		lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image = self.process_state(state)
+		lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw = self.process_state(state)
 
 		# Check events (failure,timeout, success)
 		done, event = self.check_events(lidar_measurements, goal_distance, self.episode_step)
@@ -140,7 +140,7 @@ class Pic4rlEnvironment(Node):
 		if not reset_step:
 			# Get reward
 			reward = self.get_reward(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event)
-			observation = self.get_observation(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image)
+			observation = self.get_observation(twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw)
 		else:
 			reward = None
 			observation = None
@@ -150,8 +150,9 @@ class Pic4rlEnvironment(Node):
 
 		return  observation, reward, done
 
-	def reset(self,episode):
+	def reset(self, episode):
 		#self.destroy_subscription('cmd_vel')
+		self.episode = episode
 		req = Reset.Request()
 		req.goal_pos_x,req.goal_pos_y = self.get_goal(episode)
 		self.get_logger().info("Environment reset ...")
@@ -159,17 +160,19 @@ class Pic4rlEnvironment(Node):
 		while not self.new_episode_client.wait_for_service(timeout_sec=1.0):
 			self.get_logger().info('service not available, waiting again...')
 		future = self.new_episode_client.call_async(req)
-		#self.get_logger().debug("Reset env request sent ...")
+		self.get_logger().debug("Reset env request sent ...")
 		#rclpy.spin_until_future_complete(self, future,timeout_sec=1.0)
-		#time_start = time.time()
+		time_start = time.time()
 		while rclpy.ok():
-			rclpy.spin_once(self,timeout_sec=2)
+			self.get_logger().debug("while rclpy ok ...")
+			rclpy.spin_once(self,timeout_sec=3)
+			self.get_logger().debug("reset env rclpy.spin_once ...")
 			if future.done():
 				if future.result() is not None:
 					self.get_logger().debug("Environment reset done")
 					break 
-			#if  time.time() - time_start > 10:
-			#	raise ValueError("In realtà non è un ValueError")
+			if  time.time() - time_start > 10:
+				raise ValueError("In realtà non è un ValueError")
 			
 	
 		self.get_logger().debug("Performing null step to reset variables")
@@ -182,16 +185,16 @@ class Pic4rlEnvironment(Node):
 	#############"""
 
 	def send_action(self,twist):
-		self.get_logger().debug("unpausing...")
+		#self.get_logger().debug("unpausing...")
 		self.unpause()
-		self.get_logger().debug("publishing twist...")
+		#self.get_logger().debug("publishing twist...")
 		self.cmd_vel_pub.publish(twist)
 		time.sleep(0.1)
-		self.get_logger().debug("pausing...")
+		#self.get_logger().debug("pausing...")
 		self.pause()	
 
 	def get_state(self):
-		self.get_logger().debug("Asking for the state...")
+		#self.get_logger().debug("Asking for the state...")
 		req = State.Request()
 		future =self.get_state_client.call_async(req)
 		rclpy.spin_until_future_complete(self, future)
@@ -199,7 +202,7 @@ class Pic4rlEnvironment(Node):
 			state = future.result()
 		except Exception as e:
 			node.get_logger().error('Service call failed %r' % (e,))
-		self.get_logger().debug("State received ...")
+		#self.get_logger().debug("State received ...")
 		return state
 
 	def process_state(self,state):
@@ -215,13 +218,14 @@ class Pic4rlEnvironment(Node):
 		goal_distance, goal_angle, pos_x, pos_y, yaw = self.process_odom(state.odom)
 
 		#process Depth Image from sensor msg
-		depth_image = self.process_depth_image()
+		#depth_image = self.process_depth_image()
+		#depth_image = self.depth_image_raw
 
-		return lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image
+		return lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw
 
 	def check_events(self, lidar_measurements, goal_distance, step):
 
-		min_range = 0.22
+		min_range = 0.252
 
 		if  0.05 <min(lidar_measurements) < min_range:
 			# Collision
@@ -240,66 +244,71 @@ class Pic4rlEnvironment(Node):
 
 		return False, "None"
 
-	def get_observation(self, twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, depth_image):
-		#state_list = []
-		#state_list.append(float(goal_distance))
-		#state_list.append(float(goal_angle))
+	def get_observation(self, twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw):
+		
+		#WITH DEPTH CAMERA
+		# state_list = []
+		# #divide by self.cutoff to normalize
+		# goal_dist = goal_distance
+		# #divide by math.pi
+		# goal_angle_norm = goal_angle
+		# goal_info = np.array([goal_dist, goal_angle_norm], dtype=np.float32)
+		# goal_info =tf.convert_to_tensor(goal_info)
+		# state_list.append((goal_info))
+		# state_list.append(depth_image)
 
-		#state_list.append(float(self.min_obstacle_distance))
-		#state_list.append(float(self.min_obstacle_angle))
-		#for point in lidar_measurements:
-		#	state_list.append(float(point))
+		# return state_list
+
+		#WITH LIDAR
+		state_list = []
+		state_list.append(float(goal_distance))
+
+		state_list.append(float(goal_angle))
+
+		for point in lidar_measurements:
+			#state_list.append(float(point/self.max_obstacle_distance))
+			state_list.append(float(point))
 			#print(point)
+		state = np.array(state_list,dtype = np.float32)
+		#lidar_measurements = np.array(lidar_measurements, dtype = np.float32)
+		#state = np.array([goal_distance, goal_angle, lidar_measurements], dtype = np.float32)
+		return state
 
-		#return np.array([goal_distance, goal_angle, lidar_measurements])
-
-		#state_list.append(float(self.goal_distance)*np.ones(self.image_size))
-		#state_list.append(float(self.goal_angle)*np.ones(self.image_size))
-		#state_list.append(depth_image)
-		#state_list = np.stack(state_list)
-		#state_list = tf.convert_to_tensor(state_list, dtype=tf.float32)
-		#state_list = tf.reshape(state_list, [224,224,3])
-		#print('state size', state_list.shape)
-		#print('STATE', state_list)
-		#print(depth_image)
-		tf_goal_distance = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_distance/self.cutoff)
-		tf_goal_angle = tf.math.multiply(tf.ones(self.image_size, dtype = tf.float32), self.goal_angle/math.pi)
-		#print(tf_goal_distance)
-		#print(tf_goal_angle)
-		state_tf = tf.stack([tf_goal_distance,tf_goal_angle,depth_image], axis=2)
-		#print('state shape: ', state_tf.shape)
-		#state_tf = tf.reshape(state_tf, [224,224,3])
-		#print('state shape reshaped: ', state_tf.shape)
-
-		return state_tf
+		
 
 	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
-		yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.8
+		if self.episode <= 500:
+			yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.9
+		elif self.episode > 500 and self.episode <= 1200:
+			yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.5
+		elif self.episode > 1200:
+			yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.2		
         #yaw_reward = - (1/(1.2*DESIRED_CTRL_HZ) - self.goal_angle)**2 +1
 		#distance_reward = 2*((2 * self.previous_goal_distance) / \
 		#	(self.previous_goal_distance + goal_distance) - 1)
 		#distance_reward = (2 - 2**(self.goal_distance / self.init_goal_distance))
-		#distance_reward = (self.previous_goal_distance - goal_distance)*30
-		distance_reward = (self.previous_goal_distance - goal_distance)*30
-		#v = twist.linear.x 
+		#yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.8
+		distance_reward = (self.previous_goal_distance - goal_distance)*40
+		#v = twist.linear.x
 		#w = twist.angular.z
-		#yaw_reward = - (w/(DESIRED_CTRL_HZ) - self.goal_angle)**2 +1
+		#speed_re = (3*v - math.fabs(w))
 
         # Reward for avoiding obstacles
-		if self.min_obstacle_distance < 0.25:
+		if self.min_obstacle_distance < 0.28:
 			obstacle_reward = -1
 		else:
 			obstacle_reward = 0
         
-		reward = yaw_reward + distance_reward + obstacle_reward
+		reward =  yaw_reward + distance_reward 
+
 
 		if event == "goal":
-			reward += 100
+			reward += 1000
 		elif event == "collision":
-			reward += -10
+			reward += -100
 		elif event == "timeout":
 			reward += -5
-		self.get_logger().debug(str(reward))
+		#self.get_logger().debug(str(reward))
 
 		# print(
 		# 	"Reward:", reward,
@@ -308,21 +317,20 @@ class Pic4rlEnvironment(Node):
 		# 	"Obstacle r:", obstacle_reward)
 		return reward
 
-	def get_goal(self, episode):
-		if self.stage != 4:
-			if episode < 5 or episode % 25 == 0:
+	def get_goal(self,episode):
+		if episode < 6 or episode % 25==0:
 				x = 0.35
 				y = 0.0
-			else:		
-				x = random.randrange(-15, 16) / 10.0
-				y = random.randrange(-15, 16) / 10.0
-		else:
-			goal_pose_list = [[1.0, 0.0], [2.0, -1.5], [0.0, -2.0], [2.0, 2.0], [0.8, 2.0],
-							  [-1.9, 1.9], [-1.9, 0.2], [-1.9, -0.5], [-2.0, -2.0], [-0.5, -1.0]]
-			index = random.randrange(0, 10)
+		elif episode <= 600 :		
+				x = random.randrange(-17, 18) / 10.0
+				y = random.randrange(-17, 18) / 10.0
+		elif episode > 600:
+			goal_pose_list = [[3.0, 2.0],  [-3.0, -2.0], [-0.2, 4.0],  [-2.0, -4.0], [-4.0, 1.0], [-4.2, -4.2], [3.6, 3.6], [-2.5, -2.5], [2.2, 4.0], [3.5, 4.0], [2.5, -4.4],[4.5,4.5],
+							  [1.0, -4.0], [-1.9, -4.0], [-4.5, -3.0], [-4.1, 4.1],  [2.3, 4.2],  [-2.4, 4.2],  [1.3, -4.2],[-4.4, -1.0],  [4.0, 2.5],[-4.5, 0.8],[-0.5, -4.2], [-4.1, 0.0]]
+			index = random.randrange(0, 24)
 			x = goal_pose_list[index][0]
 			y = goal_pose_list[index][1]
-			print("Goal pose: ", x, y)
+		print("Goal pose: ", x, y)
 
 		self.get_logger().info("New goal")
 		#self.get_logger().info("New goal: (x,y) : " + str(x) + "," +str(y))
@@ -370,7 +378,7 @@ class Pic4rlEnvironment(Node):
 		# Takes only sensed measurements
 		for i in range(self.lidar_points):
 			if laserscan_msg.ranges[i] == float('Inf'):
-				scan_range.append(3.50)
+				scan_range.append(4.00)
 			elif np.isnan(laserscan_msg.ranges[i]):
 				scan_range.append(0.00)
 			else:
@@ -386,50 +394,54 @@ class Pic4rlEnvironment(Node):
 		for i in range(self.lidar_points):
 			if lidar_pointlist[i] < min_dist_point:
 				min_dist_point = lidar_pointlist[i]
-			if i % 6 == 0:
+			if i % 10 == 0:
 				scan_range_process.append(min_dist_point)
 				min_dist_point = 100
 		#print('selected lidar points:', len(scan_range_process))
 
 		self.min_obstacle_distance = min(scan_range_process)
+		self.max_obstacle_distance = max(scan_range_process)
 		self.min_obstacle_angle = np.argmin(scan_range_process)
+		#print('min obstacle distance: ', self.min_obstacle_distance)
+		#print('min obstacle angle :', self.min_obstacle_angle)
+		#print('60 lidar points: ', scan_range_process)
 
 		return scan_range_process
  
-	def DEPTH_callback(self, msg):
-		depth_image_raw = np.zeros((240,320), np.uint8)
-		depth_image_raw = self.bridge.imgmsg_to_cv2(msg, '32FC1')
-		self.depth_image_raw = np.array(depth_image_raw, dtype= np.float32)
-		#savetxt('/home/maurom/depth_images/text_depth_image_raw.csv', depth_image_raw, delimiter=',')
+	#def DEPTH_callback(self, msg):
+		#depth_image_raw = np.zeros((120,160), np.uint8)
+		#depth_image_raw = self.bridge.imgmsg_to_cv2(msg, '32FC1')
+		#self.depth_image_raw = np.array(depth_image_raw, dtype= np.float32)
+		#print(self.depth_image_raw.shape)
+		#savetxt('/home/mauromartini/mauro_ws/depth_images/text_depth_image_raw.csv', depth_image_raw, delimiter=',')
 		#np.save('/home/maurom/depth_images/depth_image.npy', depth_image_raw)
-		#cv2.imwrite('/home/mauromartini/mauro_ws/depth_images/d_img_01.png', self.depth_image_raw)
+		#cv2.imwrite('/home/mauromartini/mauro_ws/depth_images/d_img_raw.png', self.depth_image_raw)
 
-
+    #@tf.function
 	def process_depth_image(self):
-		depth_image = np.array(self.depth_image_raw, dtype= np.float32)
+		img = np.array(self.depth_image_raw, dtype= np.float32)
 		#savetxt('/home/maurom/depth_images/text_depth_image.csv', depth_image, delimiter=',')
 		#print('image shape: ', depth_image.shape)
 
 		#check crop is performed correctly
 		#img = tf.convert_to_tensor(self.depth_image_raw, dtype=tf.float32)
-		#img = depth_image.reshape(240,320,1)
-		img = tf.reshape(depth_image, [240,320,1])
-		width =224
-		height = 224
-		h_off = int((240-height)*0.5)
-		w_off = int((320-width)*0.5)
-		img_crop = tf.image.crop_to_bounding_box(img,h_off,w_off,height,width)
-		img_crop_resize = tf.image.resize(img_crop,[64,64])
-		#depth_image = tf.reshape(img_crop, [height,width])
-		depth_image = tf.reshape(img_crop_resize, [64,64])
+		#img = img.reshape(240,320,1)
+		img = tf.reshape(img, [120,160,1])
+		#width =304
+		#height = 228
+		#h_off = int((240-height)*0.5)
+		#w_off = int((320-width)*0.5)
+		#img_crop = tf.image.crop_to_bounding_box(img,h_off,w_off,height,width)
+		img_resize = tf.image.resize(img,[60,80])
+		depth_image = tf.reshape(img_resize, [60,80])
 		depth_image = np.array(depth_image, dtype= np.float32)
-		depth_image = self.depth_rescale(depth_image, self.cutoff)
-		#depth_image_crop = np.asarray(img_crop, dtype= np.float32)
-		#depth_image_cropres = np.array(depth_image, dtype= np.float32)
-		#print(depth_image_cropres.shape)
-		#savetxt('/home/mauromartini/mauro_ws/depth_images/text_depth_image.csv', depth_image_cropres, delimiter=',')
-		#cv2.imwrite('/home/mauromartini/mauro_ws/depth_images/d_img_crop.png', depth_image_crop)
-		#cv2.imwrite('/home/mauromartini/mauro_ws/depth_images/d_img_crop64.png', depth_image_cropres)
+		#cv2.imwrite('/home/mauromartini/mauro_ws/depth_images/d_img_res.png', depth_image)
+		#savetxt('/home/mauromartini/mauro_ws/depth_images/depth_image_60_80.csv', depth_image, delimiter=',')
+		#depth_image = self.depth_rescale(depth_image, self.cutoff)
+		#print(depth_image.shape)
+		#cv2.imwrite('/home/mauromartini/mauro_ws/depth_images/d_img_cutoff.png', depth_image)
+		#savetxt('/home/mauromartini/mauro_ws/depth_images/depth_image_cutoff.csv', depth_image, delimiter=',')
+
 		self.image_size = depth_image.shape
 		return depth_image
 
@@ -441,14 +453,17 @@ class Pic4rlEnvironment(Node):
 		img[img>cutoff] = cutoff
 		img = img.reshape([w,h])
 
-		assert np.max(img) > 0.0 
+		#assert np.max(img) > 0.0 
 		img = img/cutoff
+		#img_visual = 255*(self.depth_image_raw/cutoff)
 		img = np.array(img, dtype=np.float32)
-		#img = cv2.equalizeHist(img)
+		
+		#img_visual = np.array(img_visual, dtype=np.uint8)
+		#img_visual = cv2.equalizeHist(img_visual)
+		#cv2.imwrite('/home/mauromartini/mauro_ws/depth_images/d_img_cutoff.png', img_visual)
         #for i in range(3):
         #    img[:,:,i] = cv2.equalizeHist(img[:,:,i])
 		return img 
-
 
 	def process_odom(self, odom_msg):
 		#self.previous_pose.pose.pose.position.x = odom_msg.pose.pose.position.x

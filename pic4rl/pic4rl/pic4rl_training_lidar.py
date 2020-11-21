@@ -64,15 +64,15 @@ import math
 
 from pic4rl.pic4rl_environment import Pic4rlEnvironment
 
-MAX_LIN_SPEED = 0.2
-MAX_ANG_SPEED = 1
-DESIRED_CTRL_HZ = 1
+MAX_LIN_SPEED = 0.8
+MAX_ANG_SPEED = 2
+DESIRED_CTRL_HZ = 5
 
 class Pic4rlTraining(Pic4rlEnvironment):
     def __init__(self):
         super().__init__()
-        #rclpy.logging.set_logger_level('omnirob_rl_agent', 20)
-        #rclpy.logging.set_logger_level('omnirob_rl_environment', 10)
+        #rclpy.logging.set_logger_level('pic4rl_training', 20)
+        #rclpy.logging.set_logger_level('pic4rl_environment', 10)
 
         """************************************************************
         ** Initialise ROS publishers and subscribers
@@ -91,7 +91,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.episode_size = 5000
 
         # DDPG hyperparameter
-        self.tau = 0.001
+        self.tau = 0.01
         self.discount_factor = 0.99
         self.learning_rate = 0.00025
         self.epsilon = 1.0
@@ -103,17 +103,18 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.score_list = []
 
         # Replay memory
-        self.memory = collections.deque(maxlen=1000000)
+        self.memory = collections.deque(maxlen=250000)
 
         # Build actor and critic models and target models
         self.actor_model, self.actor_optimizer = self.build_actor()
         self.critic_model, self.critic_optimizer = self.build_critic()
         self.target_actor_model, _ = self.build_actor()
         self.target_critic_model, _ = self.build_critic()
+        self.update_target_model()    
 
        # Load saved models
-        self.load_model = True
-        self.load_episode = 1580
+        self.load_model = False
+        self.load_episode = 0
         self.model_dir_path = os.path.dirname(os.path.realpath(__file__))
         self.model_dir_path = self.model_dir_path.replace(
             '/pic4rl/pic4rl/pic4rl',
@@ -203,21 +204,25 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 if local_step > 1:
                     self.append_sample(state, action, next_state, reward, done)
 
-                    # Train model
-                    if global_step > self.update_target_model_start:
-                        #print('Update target model, global step:', global_step)
-                        self.train_model(True)
-                    elif global_step > self.train_start:
-                        #print('Training models, global step:', global_step)
+
+                    if global_step >= self.train_start:
+                        #print('Start training. Global step:', global_step)
                         #time_check = time.time()
                         self.train_model()
-                        #print('Total time for training:', time.time()-time_check)
+                        #print('Total time for training:', time.time() - time_check)
 
-                    if done:
-                        # Update neural network
-                        #self.update_target_model()
+                        # UPDATE TARGET NETWORKS
+
+                        #SOFT UPDATE
+                        #time_check= time.time()
                         self.target_actor_model = self.update_target_model_soft(self.actor_model, self.target_actor_model, self.tau)
                         self.target_critic_model = self.update_target_model_soft(self.critic_model, self.target_critic_model, self.tau)
+                        #print('time for target model update:', time.time()-time_check)
+
+                    if done:
+                        #UPDATE TARGET NETWORKS
+                        #HARD UPDATE
+                        #self.update_target_model()
 
                         print(
                             "Episode:", episode,
@@ -236,7 +241,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 #time.sleep(max((current_hz-DESIRED_CTRL_HZ),0))
 
             # Update result and save model every 20 episodes
-            if episode > 600 and episode % 20 == 0:
+            if episode > 500 and episode % 20 == 0:
                 with open(os.path.join(self.results_path,'score'+str(self.stage)+'_episode'+str(episode)+'.json'), 'w') as outfile:
                     json.dump(self.score_list, outfile)
 
@@ -278,7 +283,6 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 self.start = end
 
     def build_actor(self):
-
         state_input = Input(shape=(self.state_size,))
         h1 = Dense(512, activation='relu')(state_input)
         h2 = Dense(256, activation='relu')(h1)
@@ -290,7 +294,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         output = concatenate([Linear_velocity,Angular_velocity])
 
         model = Model(inputs=[state_input], outputs=[output])
-        adam = Adam(lr= 0.0001)
+        adam = Adam(lr= 0.00025)
         model.summary()
 
         return model, adam
@@ -308,7 +312,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
 
         output = Dense(1, activation='linear')(concat_h2)
         model = Model(inputs=[state_input, actions_input], outputs=[output])
-        adam  = Adam(lr=0.0008)
+        adam  = Adam(lr=0.001)
         model.compile(loss="mse", optimizer=adam)
         model.summary()
 
@@ -337,7 +341,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 #state = np.asarray(state, dtype= np.float32)
                 #print("state in prediction:",state)
                 pred_action = self.actor_model(state.reshape(1, len(state)))
-                print("pred_action", pred_action)
+                #print("pred_action", pred_action)
                 return [pred_action[0][0], pred_action[0][1]]
 
 
@@ -345,7 +349,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.memory.append((state, action, next_state, reward, done))
 
 
-    def train_model(self, target_train_start=False):
+    def train_model(self):
             mini_batch = random.sample(self.memory, self.batch_size)
 
             rewards = []
@@ -377,8 +381,8 @@ class Pic4rlTraining(Pic4rlEnvironment):
             rewards = np.array(rewards).reshape(self.batch_size,)
             # print('time to set batch', time.time()-time_check)
             #time_check = time.time()
-            targets = self.train_critic(states, actions, next_states, rewards, dones, target_train_start)
-
+            targets = self.compute_targets(states, actions, next_states, rewards, dones)
+            #critic_loss = self.train_critic(states, actions, targets)
             #if np.isnan(sum(critic_loss.numpy())):
                 #print("critic_loss ",critic_loss.np())
             #    raise ValueError("critic_loss is nan")
@@ -391,17 +395,12 @@ class Pic4rlTraining(Pic4rlEnvironment):
             #    raise ValueError("actor_loss is nan")
             #print('time to train actor', time.time()-time_check)
 
-
-    def train_critic(self, states, actions, next_states, rewards, dones, target_train_start):
+    def compute_targets(self, states, actions, next_states, rewards, dones):
 
         #tf_next_states = tf.convert_to_tensor(next_states)
         error = False
 
         try:
-            if not target_train_start:
-                target_actions = self.actor_model([next_states])
-                target_actions = np.asarray(target_actions, dtype= np.float32).reshape(self.batch_size, self.action_size)
-            else:
                 target_actions = self.target_actor_model([next_states])
                 target_actions = np.asarray(target_actions, dtype= np.float32).reshape(self.batch_size, self.action_size)
 
@@ -414,13 +413,8 @@ class Pic4rlTraining(Pic4rlEnvironment):
             target_actions = self.target_actor_model([next_states])
         #print("target action ex", target_actions[0])
 
-        if not target_train_start:
-                target_q_values = self.critic_model([next_states, target_actions])
-                target_q_values = np.asarray(target_q_values, dtype= np.float32).reshape(self.batch_size,)
-
-        else:
-                target_q_values = self.target_critic_model([next_states, target_actions])
-                target_q_values = np.asarray(target_q_values, dtype= np.float32).reshape(self.batch_size,)
+        target_q_values = self.target_critic_model([next_states, target_actions])
+        target_q_values = np.asarray(target_q_values, dtype= np.float32).reshape(self.batch_size,)
 
         targets = rewards + target_q_values*self.discount_factor*(np.ones(shape=dones.shape, dtype= np.float32) - dones)
         #print("targets.shape ",targets.shape)
@@ -434,9 +428,9 @@ class Pic4rlTraining(Pic4rlEnvironment):
         return targets
     
     @tf.function
-    def compute_critic_gradient(self, states, actions, targets):
+    def train_critic(self, states, actions, targets):
         with tf.GradientTape() as tape_critic:
-            predicted_qs = self.critic_model([states,actions])
+            predicted_qs = self.critic_model([states,actions], training = True)
             theta_critic = self.critic_model.trainable_variables
             tape_critic.watch(theta_critic)
             critic_loss = tf.reduce_mean(tf.math.square(targets - predicted_qs))
@@ -447,14 +441,14 @@ class Pic4rlTraining(Pic4rlEnvironment):
     @tf.function
     def train_actor(self, states):
         with tf.GradientTape() as tape:
-            a = self.actor_model([states])
+            a = self.actor_model([states], training = True)
             tape.watch(a)
-            q = self.critic_model([states, a])
+            q = self.critic_model([states, a], training = True)
         dq_da = tape.gradient(q, a)
         #print('Action gradient dq_qa: ', dq_da)
 
         with tf.GradientTape() as tape:
-            a = self.actor_model([states])
+            a = self.actor_model([states], training = True)
             theta = self.actor_model.trainable_variables
             tape.watch(theta)
         da_dtheta = tape.gradient(a, theta, output_gradients= -dq_da)
