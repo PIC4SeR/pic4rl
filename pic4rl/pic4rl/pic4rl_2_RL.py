@@ -16,14 +16,25 @@ import collections
 
 from rclpy.executors import MultiThreadedExecutor
 
-import pic4rl.include.pic4rl_utils
-from pic4rl.include.pic4rl_utils import SpinWithTimeout
+import pic4rl.pic4rl_utils
+from pic4rl.pic4rl_utils import SpinWithTimeout
+from pic4rl.pic4rl_utils import Differential2Twist
 
+import pic4rl.pic4rl_services
+from pic4rl.pic4rl_services import ResetWorldService, PauseService , UnpauseService
+		
+import pic4rl.pic4rl_sensors
+from pic4rl.pic4rl_sensors import OdomSensor, pose_2_xyyaw
+from pic4rl.pic4rl_sensors import CmdVelInfo
+from pic4rl.pic4rl_sensors import LaserScanSensor, clean_laserscan, laserscan_2_list
 
+from pic4rl.pic4rl_sensors import s7b3State
 class Pic4rl(Node):
 	def __init__(self):
 		super().__init__("pic4rl")
 		rclpy.logging.set_logger_level('pic4rl', 10)
+
+		self.robot = s7b3State(self)
 		self.initialization()
 
 	"""###########
@@ -33,13 +44,19 @@ class Pic4rl(Node):
 	def initialization(self,args=None):
 		self.get_logger().debug('Initialization ...')
 		self.initialize_ros()
-
-	def step(self,args=None):
-		pass
+		self.initialize_gazebo_services()
+		self.initialize_sensors()
 
 	def reset(self,args=None):
-		pass
 
+		self.reset_gazebo()
+		self.collect_data_by_spinning(0.3)
+
+	def step(self,action):
+
+		self.send_action_to_Gazebo(action)
+		self.collect_data_by_spinning()
+		self.raw_data_to_state()
 
 	"""#
 	# -1
@@ -48,38 +65,58 @@ class Pic4rl(Node):
 	# INITIALIZATION
 
 	def initialize_ros(self,args=None):
+		# Add spin_with_timeout function
 		SpinWithTimeout(self)
 
 	def initialize_gazebo_services(self,args=None):
-		pass
 
+		ResetWorldService(self)
+		PauseService(self)
+		self.pause() # So that the simulation start paused
+		UnpauseService(self)
+
+		Differential2Twist(self)
+
+	# rather robot
 	def initialize_sensors(self,args=None):
-		pass
 
+		self.robot_state.initialize_sensors()
+		#self.odom_sensor = OdomSensor(self)
+		#self.laser_scan_sensor = LaserScanSensor(self)
+		#self.cmd_vel_sensor = CmdVelInfo(self) #only for test purposes
 
 	# RESET
 
 	# Reset Gazebo
 	def reset_gazebo(self,args=None):
-		pass
+
+		self.reset_world()
+		# reset goal
+		# reset other elements if any
 
 	# Collect data by node spinning
-	def collect_data_by_spinning(self,args=None):
-		pass
+	def collect_data_by_spinning(self, timeout_sec = 0.1):
+		self.unpause()
+		self.spin_with_timeout(timeout_sec)
+		self.pause()
 
 	# Get new state from gazebo 
 	def raw_data_to_state(self,args=None):
-		pass
+
+		self.robot.get_state()
 
 	# Process state and obtain observation
 	def get_observation(self,args=None):
-		pass
+		
+		self.robot.get_observation()
 
 	# STEP
 
 	# Convert action to Twist(or other) msg and send to gazebo
-	def send_action_to_Gazebo(self,args=None):
-		pass
+	def send_action_to_Gazebo(self,action):
+
+		self.send_cmd_command(action[0],action[1])
+
 
 	# Collect data by node spinning
 	# See in RESET
@@ -91,20 +128,26 @@ class Pic4rl(Node):
 	def get_reward(self,args=None):
 		pass
 
-	def __function__(self,args=None):
-		pass
 
 def main(args=None):
 	rclpy.init()
-	executor = MultiThreadedExecutor(num_threads=4)
 	pic4rl = Pic4rl()
-#	rclpy.spin()
+	#	rclpy.spin()
 
 	pic4rl.get_logger().info('Node spinning once...')
 	#rclpy.spin_once(pic4rl)
-	pic4rl.spin_with_timeout()
-	pic4rl.destroy_node()
-	rclpy.shutdown()
+	try:
+		for i in range(3):
+			pic4rl.reset()
+			pic4rl.step([1.0,1.0])
+			#print(type(pic4rl.odom_sensor.data))
+			#print(type(pic4rl.cmd_vel_sensor.data))
+			time.sleep(5)
+			#pic4rl.spin_with_timeout()
+			#pic4rl.send_cmd_command(1.0,1.0)
+	finally:
+		pic4rl.destroy_node()
+		rclpy.shutdown()
 
 if __name__ == '__main__':
 	main()
