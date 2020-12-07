@@ -34,7 +34,6 @@ class Pic4rl(Node):
 		super().__init__("pic4rl")
 		rclpy.logging.set_logger_level('pic4rl', 10)
 
-		self.robot = s7b3State(self)
 		self.initialization()
 
 	"""###########
@@ -80,7 +79,6 @@ class Pic4rl(Node):
 	# rather robot
 	def initialize_sensors(self,args=None):
 
-		self.robot_state.initialize_sensors()
 		#self.odom_sensor = OdomSensor(self)
 		#self.laser_scan_sensor = LaserScanSensor(self)
 		#self.cmd_vel_sensor = CmdVelInfo(self) #only for test purposes
@@ -103,12 +101,10 @@ class Pic4rl(Node):
 	# Get new state from gazebo 
 	def raw_data_to_state(self,args=None):
 
-		self.robot.get_state()
 
 	# Process state and obtain observation
 	def get_observation(self,args=None):
 		
-		self.robot.get_observation()
 
 	# STEP
 
