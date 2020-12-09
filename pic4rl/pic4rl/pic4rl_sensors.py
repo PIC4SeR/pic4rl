@@ -3,6 +3,8 @@
 # General purpose
 import time
 import numpy as np
+import random 
+import math 
 
 # ROS related
 import rclpy
@@ -19,7 +21,10 @@ from nav_msgs.msg import Odometry
 
 from rclpy.qos import QoSProfile
 from rclpy.qos import qos_profile_sensor_data
-#def main
+
+# others
+
+import collections
 
 class Sensor():
 	def __init__(self,
@@ -74,7 +79,7 @@ def clean_laserscan(laserscan_data, laser_range = 3.5):
 	for i in range(359):
 		if laserscan_data.ranges[i] == float('Inf'):
 			laserscan_data.ranges[i] = laser_range #set range to max
-		elif np.isnan(laserscan_msg.ranges[i]):
+		elif np.isnan(laserscan_data.ranges[i]):
 			laserscan_data.ranges[i] = 0.0 #set range to 0
 		else:
 			pass # leave range as it is
@@ -88,9 +93,10 @@ def laserscan_2_list(laserscan_data):
 
 def laserscan_2_n_points_list(laserscan_data, n_points = 60):
 	n_points_list = []
+	len_laserscan_data = len(laserscan_data.ranges)
 	for index in range(n_points):
 		n_points_list.append(\
-			laserscan_data.ranges[int(index*len(scan_range)/n_points)]
+			laserscan_data.ranges[int(index*len_laserscan_data/n_points)]
 			)
 	return n_points_list #type: list (of float)
 
@@ -181,3 +187,69 @@ class s7b3State():
 	def get_reward(self):
 
 		pass
+
+class MobileRobotState():
+	def __init__(self):
+		# These store callbacks last values
+		self.odometry_msg_data = None
+		self.laser_scan_msg_data = None
+
+		# These store transitions values
+		self.odometry_data = collections.deque(maxlen=2) 
+		self.laser_scan_data = collections.deque(maxlen=2)
+
+		self.observation = collections.deque(maxlen=2)
+
+		# Goal a point to reach
+		self.goal_position = None
+		self.done = None
+		self.goal_distance = collections.deque(maxlen=2)
+		self.goal_angle = collections.deque(maxlen=2)
+
+
+	def update_state(self):
+		self.odometry_data.append(self.odometry_msg)
+		self.laser_scan_data.append(self.laser_scan_msg)
+		x, y, yaw = pose_2_xyyaw(self.odometry_data[-1])
+
+		self.goal_distance.append(
+			goal_pose_to_distance(x,y,self.goal_pos_x, self.goal_pos_y))
+		self.goal_angle.append(
+			goal_pose_to_angle(x,y,yaw, self.goal_pos_x, self.goal_pos_y))
+
+	def update_observation(self):
+		processed_lidar = laserscan_2_n_points_list(
+			clean_laserscan(
+				self.laser_scan_data[-1]
+			)
+		)
+		x, y, yaw = pose_2_xyyaw(self.odometry_data[-1])
+
+		self.observation.append(
+			processed_lidar + [x] + [y] + [yaw]
+			)
+
+	def compute_reward(self):
+		return reward_simple_distance(self.goal_distance, self.goal_angle)
+
+def reward_simple_distance(goal_distance,goal_angle):
+	# This function expects history related to goal
+	return (goal_distance[0]-goal_distance[1])
+
+def goal_pose_to_distance(pos_x, pos_y, goal_pos_x, goal_pos_y):
+	return math.sqrt((goal_pos_x-pos_x)**2
+			+ (goal_pos_y-pos_y)**2)
+
+def goal_pose_to_angle(pos_x, pos_y, yaw,goal_pos_x, goal_pos_y):
+		path_theta = math.atan2(
+			goal_pos_y-pos_y,
+			goal_pos_y-pos_x)
+
+		goal_angle = path_theta - yaw
+
+		if goal_angle > math.pi:
+			goal_angle -= 2 * math.pi
+
+		elif goal_angle < -math.pi:
+			goal_angle += 2 * math.pi
+		return goal_angle

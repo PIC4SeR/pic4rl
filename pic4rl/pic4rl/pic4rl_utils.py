@@ -50,3 +50,4 @@ class Differential2Twist():
 			twist.angular.z = angular_speed
 		self.parent_node.cmd_vel_pub.publish(twist)
 
+
