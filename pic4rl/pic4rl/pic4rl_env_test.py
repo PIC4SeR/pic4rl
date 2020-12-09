@@ -63,10 +63,10 @@ class Pic4rlEnvironment(Node):
 			qos)
 
 		self.Image_sub = self.create_subscription(
-			Image,
-            '/intel_realsense_r200_depth/depth/image_raw',
-            self.DEPTH_callback,
-            qos_profile=qos_profile_sensor_data)
+		 Image,
+		'/camera/depth/image_raw',
+		self.DEPTH_callback,
+		qos_profile=qos_profile_sensor_data)
 
 		# Initialise client
 		#self.send_twist = self.create_client(Twist, 'send_twist')
@@ -227,9 +227,9 @@ class Pic4rlEnvironment(Node):
 
 	def check_events(self, lidar_measurements, goal_distance, step):
 
-		min_range = 0.15
+		min_range = 0.25
 
-		if  0.05 <min(lidar_measurements) < min_range:
+		if  0.05 <min(lidar_measurements) <= min_range:
 			# Collision
 			self.get_logger().info('Collision')
 			return True, "collision"
@@ -288,8 +288,10 @@ class Pic4rlEnvironment(Node):
 		return reward
 
 	def get_goal(self,episode):
-		goal_pose_list = [[2.0, -1.5],[1.2, -1.8],[0.2, -2.0], [2.0, 2.0], [0.8, 2.0],
-						 [-1.9, 1.2], [-1.9, -0.5], [-2.0, -2.0]]
+		goal_pose_list_easy = [[2.0, -1.5],[1.2, -1.8],[0.2, -2.0], [2.0, 2.0], [0.8, 2.0],
+						[-1.9, 1.2], [-1.9, -0.5], [-2.0, -2.0]]
+		goal_pose_list = [[3.0, 2.0],  [-3.0, -2.0], [-0.2, 4.0],  [-2.0, -4.0], [-4.0, 1.0], [-2.5, -2.5], [2.2, 4.0], [3.5, 4.0], [2.5, -4.4],[4.5,4.5], [-4.2, -4.2],[3.6, 3.6], 
+						[1.0, -4.0], [-1.9, -4.0], [-4.5, -3.0], [-4.1, 4.1],  [2.3, 4.2],  [-2.4, 4.2],  [1.3, -4.2],[-4.4, -1.0],  [4.0, 2.5],[-4.5, 0.8],[-0.5, -4.2], [-4.1, 0.0]]
 
 		x = goal_pose_list[self.goal_index][0]
 		y = goal_pose_list[self.goal_index][1]
@@ -369,7 +371,7 @@ class Pic4rlEnvironment(Node):
 		return scan_range_process
  
 	def DEPTH_callback(self, msg):
-		depth_image_raw = np.zeros((240,320), np.uint8)
+		depth_image_raw = np.zeros((120,160), np.uint8)
 		depth_image_raw = self.bridge.imgmsg_to_cv2(msg, '32FC1')
 		self.depth_image_raw = np.array(depth_image_raw, dtype= np.float32)
 		#print(self.depth_image_raw.shape)
@@ -386,7 +388,7 @@ class Pic4rlEnvironment(Node):
 		#check crop is performed correctly
 		#img = tf.convert_to_tensor(self.depth_image_raw, dtype=tf.float32)
 		#img = img.reshape(240,320,1)
-		img = tf.reshape(img, [240,320,1])
+		img = tf.reshape(img, [120,160,1])
 		#width =304
 		#height = 228
 		#h_off = int((240-height)*0.5)
@@ -413,7 +415,7 @@ class Pic4rlEnvironment(Node):
 		img[img>cutoff] = cutoff
 		img = img.reshape([w,h])
 
-		assert np.max(img) > 0.0 
+		#assert np.max(img) > 0.0 
 		img = img/cutoff
 		#img_visual = 255*(self.depth_image_raw/cutoff)
 		img = np.array(img, dtype=np.float32)

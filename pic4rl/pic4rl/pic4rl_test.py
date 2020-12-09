@@ -66,11 +66,11 @@ import gc
 
 from pic4rl.pic4rl_environment import Pic4rlEnvironment
 
-MAX_LIN_SPEED = 0.2
-MAX_ANG_SPEED = 1
+MAX_LIN_SPEED = 0.8
+MAX_ANG_SPEED = 2
 DESIRED_CTRL_HZ = 1
 
-class Pic4rlTraining(Pic4rlEnvironment):
+class Pic4rlTest(Pic4rlEnvironment):
     def __init__(self):
         super().__init__()
         #rclpy.logging.set_logger_level('omnirob_rl_agent', 20)
@@ -82,7 +82,6 @@ class Pic4rlTraining(Pic4rlEnvironment):
         qos = QoSProfile(depth=10)
 
         self.env = Pic4rlEnvironment()
-        #self.stage = int(stage)
 	
         #self.avg_cmd_vel = [0.2,int(0)]
         #self.evalutate_Hz(init=True)
@@ -90,24 +89,10 @@ class Pic4rlTraining(Pic4rlEnvironment):
         # State size and action size
         self.state_size = 38
         self.action_size = 2 #linear velocity, angular velocity
-        self.episode_size = 10
+        self.episode_size = 20
         #self.state_size = 3 #goal distance, goal angle, lidar points
         #self.height = 60
         #self.width = 80
-        # DDPG hyperparameter
-        # self.tau = 0.001
-        # self.discount_factor = 0.99
-        # self.learning_rate = 0.00025
-        # self.epsilon = 1.0
-        # self.epsilon_decay = 0.998
-        # self.epsilon_min = 0.05
-        # self.batch_size = 64
-        # self.train_start = 64
-        # self.update_target_model_start = 128
-        # self.score_list = []
-
-        # Replay memory
-        #self.memory = collections.deque(maxlen=1000000)
 
         # Build actor and critic models and target models
         self.actor_model, self.actor_optimizer = self.build_actor()
@@ -118,15 +103,16 @@ class Pic4rlTraining(Pic4rlEnvironment):
         self.model_dir_path = os.path.dirname(os.path.realpath(__file__))
         self.model_dir_path = self.model_dir_path.replace(
             '/pic4rl/pic4rl/pic4rl',
-            '/pic4rl/pic4rl/models/agent_model')
-        self.results_path = '/home/mauromartini/mauro_ws/test'
+            '/pic4rl/pic4rl/models/agent_lidar_model')
+        self.results_path = '/home/mauromartini/mauro_ws/simulations_results/test'
 
         self.actor_model_path = os.path.join(
             self.model_dir_path,
-            'actor_lidar_episode2620'+'.h5')
+            'actor_weights_episode3900'+'.h5')
 
         if self.load_model:
-            self.actor_model.set_weights(load_model(self.actor_model_path).get_weights()) 
+            #self.actor_model.set_weights(load_model(self.actor_model_path).get_weights()) 
+            self.actor_model.load_weights(self.actor_model_path)
           
         """************************************************************
         ** Initialise ROS clients
@@ -197,7 +183,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
                 #time.sleep(max((current_hz-DESIRED_CTRL_HZ),0))
 
             #Save score
-            with open(os.path.join(self.results_path,'test4_lidar_episode'+str(episode)+'.json'), 'w') as outfile:
+            with open(os.path.join(self.results_path,'test_rosbot_lidar_goal'+str(episode)+'.json'), 'w') as outfile:
                 json.dump(param_dictionary, outfile)
 
     def evalutate_Hz(self, init = False):
@@ -278,12 +264,12 @@ class Pic4rlTraining(Pic4rlEnvironment):
 
 def main(args=None):
     rclpy.init()
-    pic4rl_training= Pic4rlTraining()
+    pic4rl_test = Pic4rlTest()
 
-    pic4rl_training.get_logger().info('Node spinning ...')
-    rclpy.spin(pic4rl_training)
+    pic4rl_test.get_logger().info('Node spinning ...')
+    rclpy.spin(pic4rl_test)
 
-    pic4rl_training.destroy()
+    pic4rl_test.destroy()
     rclpy.shutdown()
 
 if __name__ == '__main__':
