@@ -31,8 +31,9 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 
-from omnirob_sensors.Sensor import OdomSensor, LaserScanSensor
-from rclpy.executors import SingleThreadedExecutor
+#from omnirob_sensors.Sensor import OdomSensor, LaserScanSensor
+#from rclpy.executors import SingleThreadedExecutor
+
 
 
 class Pic4rlGazebo(Node):
