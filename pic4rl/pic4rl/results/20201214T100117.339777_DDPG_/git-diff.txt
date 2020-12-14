@@ -1,0 +1,79 @@
+diff --git a/pic4rl/pic4rl/__pycache__/pic4rl_training.cpython-36.pyc b/pic4rl/pic4rl/__pycache__/pic4rl_training.cpython-36.pyc
+index 72f9430..ad8e43d 100644
+Binary files a/pic4rl/pic4rl/__pycache__/pic4rl_training.cpython-36.pyc and b/pic4rl/pic4rl/__pycache__/pic4rl_training.cpython-36.pyc differ
+diff --git a/pic4rl/pic4rl/__pycache__/pic4rl_utils.cpython-36.pyc b/pic4rl/pic4rl/__pycache__/pic4rl_utils.cpython-36.pyc
+index 3c625fb..b762070 100644
+Binary files a/pic4rl/pic4rl/__pycache__/pic4rl_utils.cpython-36.pyc and b/pic4rl/pic4rl/__pycache__/pic4rl_utils.cpython-36.pyc differ
+diff --git a/pic4rl/pic4rl/pic4rl_env.py b/pic4rl/pic4rl/pic4rl_env.py
+index 3a765b7..408a123 100755
+--- a/pic4rl/pic4rl/pic4rl_env.py
++++ b/pic4rl/pic4rl/pic4rl_env.py
+@@ -32,14 +32,10 @@ from pic4rl.pic4rl_sensors import s7b3State
+ 
+ from pic4rl.pic4rl_sensors_class import Sensors
+ 
+-class Pic4rl(Sensors, MobileRobotState, Node):
++class Pic4rl(Node):
+ 	def __init__(self):
+ 		Node.__init__(self, node_name ="pic4rl")
+ 		rclpy.logging.set_logger_level('pic4rl', 10)
+-		Sensors.__init__(self, 
+-						generic_laser_scan_sensor = True,
+-						odometry_sensor = True)
+-		MobileRobotState.__init__(self)
+ 
+ 		#super(Sensors,self).__init__(GeneralLidar = True)
+ 		#self.state = MobileRobotState()
+@@ -61,16 +57,22 @@ class Pic4rl(Sensors, MobileRobotState, Node):
+ 	def reset(self,args=None):
+ 		self.get_logger().debug('[0] reset ...')
+ 		self.reset_gazebo()
+-		self.collect_data_by_spinning(0.3)
++		self.collect_data_by_spinning(0.35)
+ 		self.raw_data_to_state()
++		self.get_observation()
+ 
+ 	def step(self,action):
+ 		self.get_logger().debug('[0] step ...')
++		if self.done:
++			self.reset()
+ 		self.send_action_to_Gazebo(action)
+ 		self.collect_data_by_spinning()
+ 		self.raw_data_to_state()
+ 		self.get_observation()
+ 		self.get_reward()
++		print(np.array(self.observation[-1]))
++		print(np.array(self.observation[-1]).shape)
++		return np.array(self.observation[-1]), self.reward, self.done, None
+ 
+ 	"""#
+ 	# -1
+diff --git a/pic4rl/pic4rl/pic4rl_utils.py b/pic4rl/pic4rl/pic4rl_utils.py
+index c081be3..1e57055 100755
+--- a/pic4rl/pic4rl/pic4rl_utils.py
++++ b/pic4rl/pic4rl/pic4rl_utils.py
+@@ -46,8 +46,8 @@ class Differential2Twist():
+ 		if (linear_speed or linear_speed) is None:
+ 			pass #null action (0,0)
+ 		else:
+-			twist.linear.x = linear_speed
+-			twist.angular.z = angular_speed
++			twist.linear.x = float(linear_speed) #tf2rl libraries use numpy.float32
++			twist.angular.z = float(angular_speed)
+ 		self.parent_node.cmd_vel_pub.publish(twist)
+ 
+ 
+diff --git a/pic4rl/setup.py b/pic4rl/setup.py
+index bf9d705..fc5aa92 100644
+--- a/pic4rl/setup.py
++++ b/pic4rl/setup.py
+@@ -22,7 +22,8 @@ setup(
+     tests_require=['pytest'],
+     entry_points={
+         'console_scripts': [
+-        'pic4rl_2_RL = pic4rl.pic4rl_2_RL:main',
++        #'pic4rl_2_RL = pic4rl.pic4rl_2_RL:main',
++        'pic4rl_training = pic4rl.pic4rl_training:main',
+         #'pic4rl_gymgazebo = pic4rl.pic4rl_gymgazebo:main',
+ 
+         #'pic4rl_tb3_burger_lidar = pic4rl.pic4rl_tb3_burger_lidar:main',

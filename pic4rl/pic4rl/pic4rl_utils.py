@@ -46,8 +46,8 @@ class Differential2Twist():
 		if (linear_speed or linear_speed) is None:
 			pass #null action (0,0)
 		else:
-			twist.linear.x = linear_speed
-			twist.angular.z = angular_speed
+			twist.linear.x = float(linear_speed) #tf2rl libraries use numpy.float32
+			twist.angular.z = float(angular_speed)
 		self.parent_node.cmd_vel_pub.publish(twist)
 
 
