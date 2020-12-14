@@ -32,10 +32,14 @@ from pic4rl.pic4rl_sensors import s7b3State
 
 from pic4rl.pic4rl_sensors_class import Sensors
 
-class Pic4rl(Node):
+class Pic4rl(Sensors, MobileRobotState, Node):
 	def __init__(self):
 		Node.__init__(self, node_name ="pic4rl")
 		rclpy.logging.set_logger_level('pic4rl', 10)
+		Sensors.__init__(self, 
+						generic_laser_scan_sensor = True,
+						odometry_sensor = True)
+		MobileRobotState.__init__(self)
 
 		#super(Sensors,self).__init__(GeneralLidar = True)
 		#self.state = MobileRobotState()
@@ -57,22 +61,16 @@ class Pic4rl(Node):
 	def reset(self,args=None):
 		self.get_logger().debug('[0] reset ...')
 		self.reset_gazebo()
-		self.collect_data_by_spinning(0.35)
+		self.collect_data_by_spinning(0.25)
 		self.raw_data_to_state()
-		self.get_observation()
 
 	def step(self,action):
 		self.get_logger().debug('[0] step ...')
-		if self.done:
-			self.reset()
 		self.send_action_to_Gazebo(action)
 		self.collect_data_by_spinning()
 		self.raw_data_to_state()
 		self.get_observation()
 		self.get_reward()
-		print(np.array(self.observation[-1]))
-		print(np.array(self.observation[-1]).shape)
-		return np.array(self.observation[-1]), self.reward, self.done, None
 
 	"""#
 	# -1

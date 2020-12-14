@@ -1,0 +1,208 @@
+commit 09203e3771b81a948407b1b13f662df1d4ed9b99
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Wed Dec 9 16:00:16 2020 +0100
+
+    Sensors ( invasive parent-children--> simple conditional inheritance )
+
+commit 2ef4c5260a43675cc5a7ff50af909787d18fafbf
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Mon Dec 7 17:54:00 2020 +0100
+
+    Removed robot class
+
+commit 66934e77c910a3f4614efad80618b9358584d1c1
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Wed Nov 25 11:39:33 2020 +0100
+
+    general update
+
+commit 575fe14840772640771a7d53908d35b5e5a78f96
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Fri Nov 20 10:08:20 2020 +0100
+
+    Created utils and services files and basic structure
+
+commit e54c09b1bf8a470f188695b1cf0af080bb3a69c9
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Wed Nov 18 17:44:32 2020 +0100
+
+    First re-organization in inherited classes
+
+commit 1e64b42e39d9b2f8db30b62ac74536a9df8acf38
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Fri Nov 13 14:50:13 2020 +0100
+
+    First sensors nodes
+
+commit f8ccee246e054beea7cfa220faccda7dd58a3442
+Merge: 4e3d201 124e0c2
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Thu Nov 12 15:54:46 2020 +0100
+
+    Merge branch 'master' of github.com:PIC4SeRCentre/pic4rl
+
+commit 4e3d201d5b8ab49fcc0c5b246716a5b85108ff79
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Thu Nov 12 15:53:22 2020 +0100
+
+    Cleaned comments
+
+commit 32dd808c18cca5ae896d0570879d4a9c823d6a66
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Thu Nov 12 15:02:21 2020 +0100
+
+    Simplied functions
+
+commit 124e0c2d45b1e35677cb950db79778f2bdf655f3
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Fri Sep 25 15:55:34 2020 +0200
+
+    Update README.md
+    
+    removed guide that actually doesn't work on Marvin
+
+commit b886ed01a7b59f6e2fee81471bc9d2040c961b18
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Fri Sep 25 10:58:19 2020 +0200
+
+    Update README.md
+    
+    Improved gazebo installation procedure
+
+commit 1246b7e647a9582b02789ed2fcc958c5a96e7282
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Fri Sep 25 10:25:57 2020 +0200
+
+    Update README.md
+
+commit 6197cfe67874ed1640524ce036890d7c88f37533
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Fri Sep 25 10:22:10 2020 +0200
+
+    Update README.md
+    
+    Added Gazebo and ros2 installation procedures
+
+commit bfda8bf1e99ffa47c6f0c3e544b58603adfb7f74
+Merge: 744c79b 73336f1
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Thu Sep 24 17:31:46 2020 +0200
+
+    Merge branch 'master' of github.com:PIC4SeRCentre/pic4rl
+
+commit 744c79b9d5d11458ec7ec751b175c88df9f57586
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Thu Sep 24 17:26:44 2020 +0200
+
+    Modified structure
+    Changed reward (modified hyperbolic function)
+    burger with lidar
+    waffle with r200 camera
+
+commit 73336f1b38eaefa1f0a967823ec190ed0b1baaf1
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Fri Jul 17 16:26:47 2020 +0200
+
+    Added Mauro
+
+commit 131139ad6b793798788ae201dc48aa642b4cb23c
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Fri Jul 17 16:24:49 2020 +0200
+
+    Added Mauro's camera env
+
+commit 075ad6746072f9909910b920d02aa8d97b11a63a
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Fri Jul 17 16:23:29 2020 +0200
+
+    Added Mauro's env with real sense: waffle r200
+
+commit 7a3d04712867492e5c202dfd5887081762893e3e
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Fri Jul 17 12:13:02 2020 +0200
+
+    Removed old description and added new scheme
+
+commit ebb9d7fdb47a91264041eaa0ff64921266e546a5
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Fri Jul 17 12:10:52 2020 +0200
+
+    Add alg flow chart
+
+commit e795590171e0ad3a5ec398db34fa37f1cd618fd3
+Merge: ad9dddc 5338358
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Fri Jul 17 10:58:33 2020 +0200
+
+    Merge pull request #1 from PIC4SeRCentre/compact
+    
+    Compact
+
+commit ad9dddc49d0f0c0866f6922ffbefd34ecee3d63f
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Fri Jul 17 10:16:40 2020 +0200
+
+    Added launcher for empty worlds with burger and omnirob
+
+commit 5338358507b99ae5960667dc55535599cf2512d5
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Thu Jul 16 10:50:49 2020 +0200
+
+    First working draft
+
+commit 8665f91625ce7fa39e85d34346e5b856e131e5a8
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Mon Jul 6 14:20:14 2020 +0200
+
+    First step in compacting procedure
+
+commit 1cc870e4b7819de93f79bbdda040258978655630
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Wed Jul 1 14:47:25 2020 +0200
+
+    Added ddpg_agent.py file
+    remoeved unused class OmnirobGazebov1_1 in pic4rl_gazebo
+
+commit 8f4be186a1ce927358ded0ee1eacd3859dd4b3cf
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Thu Jun 25 19:35:58 2020 +0200
+
+    Update README.md
+
+commit c764e01324048c3c769eaa6254572b877e25639c
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Thu Jun 25 19:34:08 2020 +0200
+
+    Add scheme for easing understandin
+
+commit f9fde051eddaf5ae8a0e5115b20edf654f15520f
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Thu Jun 25 13:14:15 2020 +0200
+
+    Update README.md
+
+commit f482d7642498de90b25c748245435249c0133d3f
+Author: enrico.sutera <enricosutera@outlook.com>
+Date:   Thu Jun 25 13:02:17 2020 +0200
+
+    All the architecture from omnirob repository is added at this stage.
+    Mainly
+    goal model in models/goal_box
+    omnirob sdf model that actually will be removed
+    the three main files
+            training
+            environment
+            gazebo (interface)
+    the services msgs (State, Reset, Step)
+
+commit 7bba380ad319b7c9fcc3c6a7c4d0ba74e7adb835
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Thu Jun 25 12:58:06 2020 +0200
+
+    First readme update
+
+commit fe527fddd3d919760fc1de3d60d7ec58be764717
+Author: enricosutera <51802424+enricosutera@users.noreply.github.com>
+Date:   Thu Jun 25 12:56:08 2020 +0200
+
+    Initial commit
