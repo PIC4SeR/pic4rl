@@ -158,36 +158,26 @@ class RealSenseSensor(Sensor):
         depth_image_raw = np.zeros((screen_height,screen_width), np.uint8)
         depth_image_raw = self.bridge.imgmsg_to_cv2(self.data, '32FC1')
         depth_image_raw = np.array(depth_image_raw, dtype= np.float32)
-
-        #savetxt('/home/maurom/depth_images/text_depth_image_raw.csv', depth_image_raw, delimiter=',')
-        #np.save('/home/maurom/depth_images/depth_image.npy', depth_image_raw)
-        #cv2.imwrite('/home/maurom/depth_images/d_img_01.png', self.depth_image_raw)
+        img = depth_image_raw
 
 
-        depth_image = self.depth_to_net_dim(depth_image_raw)
-        #depth_image = np.array(depth_image, dtype= np.float32)
-        #savetxt('/home/maurom/depth_images/text_depth_image.csv', depth_image, delimiter=',')
-        #print('image shape: ', depth_image.shape)
+        #depth_image = self.depth_to_net_dim(depth_image_raw)
+
+        cutoff = 3.5
+        img[img>cutoff] = cutoff
 
 
         #check crop is performed correctly
-        img = tf.convert_to_tensor(depth_image, dtype=tf.float32)
-        img = tf.reshape(img, [screen_height,screen_width,1])
-        """
-        width = self.width
-        height = self.height
-        img_crop = tf.image.crop_to_bounding_box(img, 2, 48, width,height)
-        img_crop = tf.reshape(img_crop, [width,height])
-        depth_image = np.asarray(img_crop, dtype= np.float32)
-        #cv2.imwrite('/home/maurom/depth_images/d_img_crop.png', img_crop)
-        self.image_size = depth_image.shape
-        """
+        #img = tf.convert_to_tensor(depth_image, dtype=tf.float32)
+        #img = tf.reshape(img, [screen_height,screen_width,1])
+
         depth_image = np.asarray(img, dtype= np.float32)
         self.image_size = depth_image.shape
+        #print(np.max(depth_image))
 
         return {"depth_image":depth_image}
 
-
+        #not used
     def depth_to_net_dim(self,img):
         #Careful if the cutoff is in meters or millimeters!
         cutoff = 3.5
@@ -196,18 +186,20 @@ class RealSenseSensor(Sensor):
 
         return img
 
+        #not used
     def depth_to_3ch(self,img, cutoff):
         #Useful to turn the background into black into the depth images.
         w,h = img.shape
         new_img = np.zeros([w,h,3])
         img = img.flatten()
-        img[img>cutoff] = 0.0 
+        img[img>cutoff] = cutoff
         img = img.reshape([w,h])
         #for i in range(3):
         #    new_img[:,:,i] = img 
         return img
 
     def depth_scaled_to_255(self,img):
+        print(np.max(img))
         assert np.max(img) > 0.0 
         img = 255.0/np.max(img)*img
         img = np.array(img,dtype=np.uint8)

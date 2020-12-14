@@ -172,7 +172,6 @@ class Pic4rlGymGazEnv(Node):
 	def reset_state(self):
 		for sensor in self.sensors:
 			del sensor.data
-
 		
 	"""################
 	# Ros 

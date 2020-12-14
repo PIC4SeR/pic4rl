@@ -43,6 +43,7 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 
 		self.__init__sensors()
 
+
 	"""################
 	# gym related
 	################""" 
@@ -215,6 +216,7 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 			else:
 				raise ValueError("done_info is out of range")
 
+
 	def process_odom(self):
 		goal_pos_x = self.state["goal_pos_x"]
 		goal_pos_y = self.state["goal_pos_y"]
@@ -271,6 +273,10 @@ class Pic4rlTurtleBot3(Pic4rlGymGazEnv):
 
 		#reduced_depth_image= np.array(reduced_depth_image)
 		return reduced_depth_image
+
+
+
+
 
 	def render(self):
 
