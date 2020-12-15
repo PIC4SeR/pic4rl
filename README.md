@@ -6,19 +6,21 @@
 
 ---
 
-# Title
-Pic4rl
+# Pic4rl
+
 ## Description of the project
+This repository aims to provide a framework for applying Deep Reinforcement Learning to robotics.
+Currently we're working on providing some simulation environment for diverse robots, such as Turtlebots 3, Rosbot pro,
+Nexus 3wd (named after S7B3) and 4wd (named after ????) platforms.
 
-
-![alt text](https://github.com/PIC4SeRCentre/pic4rl/blob/master/Screenshot%20from%202020-07-17%2012-09-47.png?raw=true)
+Next steps include drones and manipulators.
 
 ## Installation procedure
 ...
-### ROS2 is required
-On ubuntu 18.04, install folliwing https://index.ros.org/doc/ros2/Installation/Dashing/Linux-Install-Debians/
+### ROS2 (Eloquent)
+On ubuntu 18.04, install folliwing https://index.ros.org/doc/ros2/Installation/Eloquent/Linux-Install-Debians/
 
-
+### Gazebo
 Gazebo 9 i required.
 Install following http://gazebosim.org/tutorials?cat=install&tut=install_ubuntu&ver=9.0
 
@@ -31,10 +33,14 @@ pic4rl models (or other models) should be added to GAZEBO_MODEL_PATH:
 ```
 export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:~/ros_2_workspace/src/pic4rl/pic4rl_gazebo/models
 ```
+### Other dependencies:
+Python3:
+OpenCV (3.2.0.8) 
+tensorflow 2.3
 
+Ros2 packages:
+To be added
 ## User Guide
-...
 
-P.S. Compile requirements.txt file if needed
 
-More detailed information about markdown style for README.md file [HERE](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet)
+
