@@ -11,8 +11,16 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name), glob('launch/*.launch.py'))
-        
+        (os.path.join('share', package_name), glob('launch/*.launch.py')),
+        (os.path.join(os.path.join('share', package_name),"agents"),\
+                                 glob('agents/*.py')),
+        (os.path.join(os.path.join('share', package_name),"sensors"),\
+                                 glob('sensors/*.py')),
+        (os.path.join(os.path.join('share', package_name),"tasks"),\
+                                 glob('tasks/*.py')),
+        (os.path.join(os.path.join('share', package_name),"utils"),\
+                                 glob('utils/*.py'))                       
+
     ],
     install_requires=['setuptools'],
     zip_safe=True,
