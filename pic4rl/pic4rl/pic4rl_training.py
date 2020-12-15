@@ -39,6 +39,73 @@ from pic4rl.ddpg_agent import DDPGLidarAgent
 from pic4rl.ddpg_visual_agent import DDPGVisualAgent
 from pic4rl.trainer import Pic4Trainer, Pic4VisualTrainer
 
+from pic4rl.pic4rl_robots import MobileRobotState
+from pic4rl.pic4rl_sensors import s7b3State
+
+from pic4rl.pic4rl_sensors_class import Sensors
+from pic4rl.pic4rl_env import Pic4rl
+
+
+from gym import spaces
+
+import gym
+
+class Pic4rlRobot(Sensors, MobileRobotState, Pic4rl):
+    def __init__(self):
+        Pic4rl.__init__(self)
+        Sensors.__init__(self, 
+                        generic_laser_scan_sensor = True,
+                        odometry_sensor = True)
+        MobileRobotState.__init__(self)
+
+        action =[
+        [-0.5, 0.5], # x_speed 
+        #[-0.5, 0.5], # y_speed
+        [-1, 1] # theta_speed
+        ]
+
+
+        low_action = []
+        high_action = []
+        for i in range(len(action)):
+            low_action.append(action[i][0])
+            high_action.append(action[i][1])
+
+        low_action = np.array(low_action, dtype=np.float32)
+        high_action = np.array(high_action, dtype=np.float32)
+
+        self.action_space = spaces.Box(
+            low=low_action,
+            high=high_action,
+            #shape=(1,),
+            dtype=np.float32
+        )
+        
+        """
+        state
+        """
+        state =[
+        [0., 5.], # goal_distance 
+        [-math.pi, math.pi], # goal_angle
+        #[-math.pi, math.pi] # yaw
+        ]
+        
+
+        low_state = []
+        high_state = []
+        for i in range(len(state)):
+            low_state.append(state[i][0])
+            high_state.append(state[i][1])
+
+        self.low_state = np.array(low_state, dtype=np.float32)
+        self.high_state = np.array(high_state, dtype=np.float32)
+
+        self.observation_space = spaces.Box(
+            low=self.low_state,
+            high=self.high_state,
+            dtype=np.float32
+        )
+
 
 class Pic4rlTraining(Pic4rlEnvironment):
     def __init__(self):
@@ -58,7 +125,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         #self.evalutate_Hz(init=True)
 
         # State size and action size
-        self.state_size = 3 #goal distance, goal angle, lidar points
+        self.state_size = 2 #goal distance, goal angle, lidar points
         self.action_size = 2 #linear velocity, angular velocity
         self.height = 60
         self.width = 80
@@ -81,29 +148,34 @@ class Pic4rlTraining(Pic4rlEnvironment):
 
 
         #Instanciate DDPG Agent
-        # self.Agent = DDPGLidarAgent(state_size = self.state_size, action_size = self.action_size, 
-        #     max_linear_vel = self.max_linear_vel, max_angular_vel= self.max_angular_vel, 
-        #     max_memory_size = 200000, 
-        #     load = self.load_model,
-        #     gamma = 0.99, epsilon = 1.0, epsilon_decay = 0.998, epsilon_min = 0.05, 
-        #     tau = 0.01, 
-        #     batch_size = self.batch_size, 
-        #     noise_std_dev = 0.2)  
+        self.Agent = DDPGLidarAgent(state_size = self.state_size, action_size = self.action_size, 
+             max_linear_vel = self.max_linear_vel, max_angular_vel= self.max_angular_vel, 
+             max_memory_size = 200000, 
+             load = self.load_model,
+             gamma = 0.99, epsilon = 1.0, epsilon_decay = 0.998, epsilon_min = 0.05, 
+             tau = 0.01, 
+             batch_size = self.batch_size, 
+             noise_std_dev = 0.2)  
 
-        self.Agent = DDPGVisualAgent(state_size = self.state_size, 
-            image_height = self.height, image_width = self.width,
-            action_size = self.action_size, 
-            max_linear_vel = self.max_linear_vel, max_angular_vel= self.max_angular_vel, 
-            max_memory_size = 150000, 
-            load = self.load_model,
-            gamma = 0.99, epsilon = 1.0, epsilon_decay = 0.998, epsilon_min = 0.05, 
-            tau = 0.01, 
-            batch_size = self.batch_size, 
-            noise_std_dev = 0.2)  
+
+        #self.Agent = DDPGVisualAgent(state_size = self.state_size, 
+        #    image_height = self.height, image_width = self.width,
+        #    action_size = self.action_size, 
+        #    max_linear_vel = self.max_linear_vel, max_angular_vel= self.max_angular_vel, 
+        #    max_memory_size = 150000, 
+        #    load = self.load_model,
+        #    gamma = 0.99, epsilon = 1.0, epsilon_decay = 0.998, epsilon_min = 0.05, 
+        #    tau = 0.01, 
+        #    batch_size = self.batch_size, 
+        #    noise_std_dev = 0.2)  
 
         # Define and stat training process
-        #self.Trainer = Pic4Trainer(self.Agent, self.load_episode, self.episode_size, self.train_start)
-        self.Trainer = Pic4VisualTrainer(self.Agent, self.load_episode, self.episode_size, self.train_start)
+        self.Trainer = Pic4Trainer(self.Agent, self.load_episode,\
+                                    self.episode_size, self.train_start,\
+                                    Pic4rlRobot)
+        
+        #self.Trainer = Pic4VisualTrainer(self.Agent, self.load_episode,\
+        #                                 self.episode_size, self.train_start)
         self.Trainer.process()
 
 

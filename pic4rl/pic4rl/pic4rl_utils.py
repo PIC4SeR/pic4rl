@@ -31,7 +31,7 @@ from geometry_msgs.msg import Twist
 class Differential2Twist():
 	def __init__ (self, parent_node):
 		self.parent_node = parent_node
-		self.parent_node.get_logger().debug("Differential2Twist.")
+		self.parent_node.get_logger().info("Differential2Twist.")
 		parent_node.send_cmd_command = self.send_cmd_command
 		qos = QoSProfile(depth=10)
 
@@ -41,6 +41,9 @@ class Differential2Twist():
 			qos)
 
 	def send_cmd_command(self,linear_speed, angular_speed):
+		debug_msg = "sending DiffTwist: x " + str(linear_speed) + \
+					 " ang z " + str(angular_speed)
+		self.parent_node.get_logger().debug(debug_msg)
 		twist = Twist() #void instance created
 		
 		if (linear_speed or linear_speed) is None:

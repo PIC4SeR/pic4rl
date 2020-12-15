@@ -23,10 +23,11 @@ from pic4rl.pic4rl_environment import Pic4rlEnvironment
 from pic4rl.ddpg_visual_agent import DDPGVisualAgent
 
 class Pic4Trainer():
-	def __init__(self, agent, load_episode, episode_size, train_start):
+	def __init__(self, agent, load_episode, episode_size, train_start, env):
 		super().__init__()
 
-		self.env =  Pic4rlEnvironment()
+		#self.env =  Pic4rlEnvironment()
+		self.env = env()
 		self.Agent = agent
 		self.load_episode = load_episode
 		self.episode_size = episode_size
@@ -34,11 +35,12 @@ class Pic4Trainer():
 		self.train_start = train_start
 		self.train_score_list = []
 		self.eval_score_list = []
-		self.results_path = '/home/mauromartini/mauro_ws/scores/lidar/last'
+		#self.results_path = '/home/mauromartini/mauro_ws/scores/lidar/last'
+		self.results_path = '/home/results'
 
 	def process(self):
+		print("[Trainer.py] process")
 		global_step = 0
-
 		for episode in range(self.load_episode+1, self.episode_size):
 			global_step += 1
 
@@ -73,6 +75,7 @@ class Pic4Trainer():
 				self.eval_score_list.append(score)
 
 	def make_episode(self, episode, global_step = None, training = True):
+
 		local_step = 0
 		done = False
 		score = 0
@@ -89,7 +92,7 @@ class Pic4Trainer():
 
 			else:
 				state = next_state
-				ction = self.Agent.get_action(state)
+				action = self.Agent.get_action(state)
 
 				if np.any(np.isnan(action)):
 					print("Action:", action)

@@ -35,7 +35,7 @@ from pic4rl.pic4rl_sensors_class import Sensors
 class Pic4rl(Node):
 	def __init__(self):
 		Node.__init__(self, node_name ="pic4rl")
-		rclpy.logging.set_logger_level('pic4rl', 10)
+		#rclpy.logging.set_logger_level('pic4rl', 10)
 
 		#super(Sensors,self).__init__(GeneralLidar = True)
 		#self.state = MobileRobotState()
@@ -60,6 +60,7 @@ class Pic4rl(Node):
 		self.collect_data_by_spinning(0.35)
 		self.raw_data_to_state()
 		self.get_observation()
+
 
 	def step(self,action):
 		self.get_logger().debug('[0] step ...')
@@ -154,27 +155,27 @@ class Pic4rl(Node):
 		
 
       
-def main(args=None):
-	rclpy.init()
-	pic4rl = Pic4rl()
-	#	rclpy.spin()
+#def main(args=None):
+#	rclpy.init()
+#	pic4rl = Pic4rl()
+#	#	rclpy.spin()
+#
+#	pic4rl.get_logger().info('Node spinning once...')
+#	#rclpy.spin_once(pic4rl)
+#	try:
+#		for i in range(3):
+#			pic4rl.reset()
+#			for i in range(20):
+#				pic4rl.step([0.4,0.0])
+#				#print(type(pic4rl.odom_sensor.data))
+#				#print(type(pic4rl.cmd_vel_sensor.data))
+#				time.sleep(0.1)
+#			time.sleep(5)
+#			#pic4rl.spin_with_timeout()
+#			#pic4rl.send_cmd_command(1.0,1.0)
+#	finally:
+#		pic4rl.destroy_node()
+#		rclpy.shutdown()
 
-	pic4rl.get_logger().info('Node spinning once...')
-	#rclpy.spin_once(pic4rl)
-	try:
-		for i in range(3):
-			pic4rl.reset()
-			for i in range(20):
-				pic4rl.step([0.4,0.0])
-				#print(type(pic4rl.odom_sensor.data))
-				#print(type(pic4rl.cmd_vel_sensor.data))
-				time.sleep(0.1)
-			time.sleep(5)
-			#pic4rl.spin_with_timeout()
-			#pic4rl.send_cmd_command(1.0,1.0)
-	finally:
-		pic4rl.destroy_node()
-		rclpy.shutdown()
-
-if __name__ == '__main__':
-	main()
+#if __name__ == '__main__':
+#	main()
