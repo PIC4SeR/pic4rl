@@ -23,7 +23,7 @@ from rclpy.qos import qos_profile_sensor_data
 # others
 
 import collections
-from pic4rl.pic4rl_sensors_inherited import GenericLaserScanSensor, OdometrySensor
+from pic4rl.sensors.pic4rl_sensors_inherited import GenericLaserScanSensor, OdometrySensor
 
 class Sensors(GenericLaserScanSensor, OdometrySensor):
 	def __init__(self,

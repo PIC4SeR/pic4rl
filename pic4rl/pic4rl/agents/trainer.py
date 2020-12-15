@@ -19,8 +19,8 @@ import sys
 import time
 import math
 
-from pic4rl.pic4rl_environment import Pic4rlEnvironment
-from pic4rl.ddpg_visual_agent import DDPGVisualAgent
+#from pic4rl.pic4rl_environment import Pic4rlEnvironment
+from pic4rl.agents.ddpg_visual_agent import DDPGVisualAgent
 
 class Pic4Trainer():
 	def __init__(self, agent, load_episode, episode_size, train_start, env):
@@ -85,7 +85,7 @@ class Pic4Trainer():
 
 		while not done:
 			local_step += 1
-			#print('new local step at time: ', time.time())
+			#print('[trainer][make_episode] new local step at time: ', time.time())
 			# Action based on the current state
 			if local_step == 1:
 				action = np.array([0.0, 0.0], dtype = np.float32)
@@ -93,7 +93,7 @@ class Pic4Trainer():
 			else:
 				state = next_state
 				action = self.Agent.get_action(state)
-
+				#print('[trainer][make_episode] action taken')
 				if np.any(np.isnan(action)):
 					print("Action:", action)
 					action = np.array([0.0, 0.0], dtype = np.float32)

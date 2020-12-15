@@ -21,9 +21,9 @@ import sys
 import time
 import math
 
-from pic4rl.action_noise import OUActionNoise
-from pic4rl.replay_buffer import ReplayBufferClassic
-from pic4rl.NeuralNetworks import CriticNetwork, ActorNetwork
+from pic4rl.agents.action_noise import OUActionNoise
+from pic4rl.agents.replay_buffer import ReplayBufferClassic
+from pic4rl.agents.NeuralNetworks import CriticNetwork, ActorNetwork
 
 class DDPGLidarAgent:
 	def __init__(self, state_size, action_size = 2, max_linear_vel = 0.8, max_angular_vel = 2, max_memory_size = 100000, load = False,

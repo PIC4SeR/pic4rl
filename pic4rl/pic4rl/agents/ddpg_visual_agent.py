@@ -22,9 +22,9 @@ import sys
 import time
 import math
 
-from pic4rl.action_noise import OUActionNoise
-from pic4rl.replay_buffer import ReplayBufferCamera
-from pic4rl.NeuralNetworks import CriticCNNetwork, ActorCNNetwork
+from pic4rl.agents.action_noise import OUActionNoise
+from pic4rl.agents.replay_buffer import ReplayBufferCamera
+from pic4rl.agents.NeuralNetworks import CriticCNNetwork, ActorCNNetwork
 
 class DDPGVisualAgent:
 	def __init__(self, state_size, image_height, image_width, action_size = 2, max_linear_vel = 0.8, max_angular_vel = 2, max_memory_size = 100000, load = False,

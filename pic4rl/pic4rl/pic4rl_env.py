@@ -16,22 +16,13 @@ import time
 
 from rclpy.executors import MultiThreadedExecutor
 
-import pic4rl.pic4rl_utils
-from pic4rl.pic4rl_utils import SpinWithTimeout
-from pic4rl.pic4rl_utils import Differential2Twist
+#import pic4rl.pic4rl_utils
+from pic4rl.utils.pic4rl_utils import SpinWithTimeout
+from pic4rl.utils.pic4rl_utils import Differential2Twist
 
-import pic4rl.pic4rl_services
-from pic4rl.pic4rl_services import ResetWorldService, PauseService , UnpauseService
+import pic4rl.utils.pic4rl_services
+from pic4rl.utils.pic4rl_services import ResetWorldService, PauseService , UnpauseService
 		
-import pic4rl.pic4rl_sensors
-from pic4rl.pic4rl_sensors import OdomSensor, pose_2_xyyaw
-from pic4rl.pic4rl_sensors import CmdVelInfo
-from pic4rl.pic4rl_sensors import LaserScanSensor, clean_laserscan, laserscan_2_list, laserscan_2_n_points_list
-from pic4rl.pic4rl_sensors import MobileRobotState
-from pic4rl.pic4rl_sensors import s7b3State
-
-from pic4rl.pic4rl_sensors_class import Sensors
-
 class Pic4rl(Node):
 	def __init__(self):
 		Node.__init__(self, node_name ="pic4rl")
@@ -71,8 +62,6 @@ class Pic4rl(Node):
 		self.raw_data_to_state()
 		self.get_observation()
 		self.get_reward()
-		print(np.array(self.observation[-1]))
-		print(np.array(self.observation[-1]).shape)
 		return np.array(self.observation[-1]), self.reward, self.done, None
 
 	"""#

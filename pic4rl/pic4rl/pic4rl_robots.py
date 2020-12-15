@@ -24,8 +24,8 @@ from rclpy.qos import qos_profile_sensor_data
 
 # others
 
-from pic4rl.pic4rl_sensors import pose_2_xyyaw
-from pic4rl.pic4rl_sensors import clean_laserscan, laserscan_2_list, laserscan_2_n_points_list
+from pic4rl.sensors.pic4rl_sensors import pose_2_xyyaw
+from pic4rl.sensors.pic4rl_sensors import clean_laserscan, laserscan_2_list, laserscan_2_n_points_list
 
 
 import collections
