@@ -34,6 +34,7 @@ import sys
 import time
 import math
 
+from pic4rl.pic4rl_environment import Pic4rlEnvironment
 from pic4rl.agents.ddpg_agent import DDPGLidarAgent
 from pic4rl.agents.ddpg_visual_agent import DDPGVisualAgent
 from pic4rl.agents.trainer import Pic4Trainer, Pic4VisualTrainer
@@ -44,25 +45,71 @@ from pic4rl.sensors.pic4rl_sensors import s7b3State
 from pic4rl.sensors.pic4rl_sensors_class import Sensors
 from pic4rl.pic4rl_env import Pic4rl
 
-from pic4rl.tasks.pic4rl_navigation_learning import LidarNavigation
-from pic4rl.tasks.pic4rl_navigation_learning import OdomNavigation
 
 from gym import spaces
 
 import gym
 
-class Pic4rlEnvironment(
-    LidarNavigation, 
-    Pic4rl
-    ):
-
+class Pic4rlRobot(Sensors, MobileRobotState, Pic4rl):
     def __init__(self):
         Pic4rl.__init__(self)
-        LidarNavigation.__init__(self)
-        #MobileRobotState.__init__(self)
+        Sensors.__init__(self, 
+                        generic_laser_scan_sensor = True,
+                        odometry_sensor = True)
+        MobileRobotState.__init__(self)
 
-class Pic4rlTraining():
+        action =[
+        [-0.5, 0.5], # x_speed 
+        #[-0.5, 0.5], # y_speed
+        [-1, 1] # theta_speed
+        ]
+
+
+        low_action = []
+        high_action = []
+        for i in range(len(action)):
+            low_action.append(action[i][0])
+            high_action.append(action[i][1])
+
+        low_action = np.array(low_action, dtype=np.float32)
+        high_action = np.array(high_action, dtype=np.float32)
+
+        self.action_space = spaces.Box(
+            low=low_action,
+            high=high_action,
+            #shape=(1,),
+            dtype=np.float32
+        )
+        
+        """
+        state
+        """
+        state =[
+        [0., 5.], # goal_distance 
+        [-math.pi, math.pi], # goal_angle
+        #[-math.pi, math.pi] # yaw
+        ]
+        
+
+        low_state = []
+        high_state = []
+        for i in range(len(state)):
+            low_state.append(state[i][0])
+            high_state.append(state[i][1])
+
+        self.low_state = np.array(low_state, dtype=np.float32)
+        self.high_state = np.array(high_state, dtype=np.float32)
+
+        self.observation_space = spaces.Box(
+            low=self.low_state,
+            high=self.high_state,
+            dtype=np.float32
+        )
+
+
+class Pic4rlTraining(Pic4rlEnvironment):
     def __init__(self):
+        super().__init__()
         #rclpy.logging.set_logger_level('pic4rl_training', 20)
         #rclpy.logging.set_logger_level('pic4rl_environment', 10)
 
@@ -78,7 +125,7 @@ class Pic4rlTraining():
         #self.evalutate_Hz(init=True)
 
         # State size and action size
-        self.state_size = 62 #goal distance, goal angle, lidar points
+        self.state_size = 2 #goal distance, goal angle, lidar points
         self.action_size = 2 #linear velocity, angular velocity
         self.height = 60
         self.width = 80
@@ -125,22 +172,22 @@ class Pic4rlTraining():
         # Define and stat training process
         self.Trainer = Pic4Trainer(self.Agent, self.load_episode,\
                                     self.episode_size, self.train_start,\
-                                    Pic4rlEnvironment)
+                                    Pic4rlRobot)
         
         #self.Trainer = Pic4VisualTrainer(self.Agent, self.load_episode,\
         #                                 self.episode_size, self.train_start)
-    def learn(self):
         self.Trainer.process()
 
 
 def main(args=None):
-    try:
-        rclpy.init()
-        pic4rl_training= Pic4rlTraining()
-        pic4rl_training.learn()
-    finally:
-        pic4rl_training.Trainer.env.destroy_node()
-        rclpy.shutdown()
+    rclpy.init()
+    pic4rl_training= Pic4rlTraining()
+
+    pic4rl_training.get_logger().info('Node spinning ...')
+    rclpy.spin(pic4rl_training)
+
+    pic4rl_training.destroy()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

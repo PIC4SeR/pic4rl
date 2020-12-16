@@ -55,13 +55,14 @@ class Pic4rl(Node):
 
 	def step(self,action):
 		self.get_logger().debug('[0] step ...')
-		if self.done:
-			self.reset()
+		#if self.done:
+		#	self.reset()
 		self.send_action_to_Gazebo(action)
 		self.collect_data_by_spinning()
 		self.raw_data_to_state()
 		self.get_observation()
 		self.get_reward()
+		self.check_done()
 		return np.array(self.observation[-1]), self.reward, self.done, None
 
 	"""#
@@ -93,9 +94,8 @@ class Pic4rl(Node):
 	def reset_gazebo(self,args=None):
 		self.get_logger().debug('	[1] reset_gazebo ...')
 		self.reset_world()
-		#To be separated from
-		self.goal_pos_x = random.uniform(-3,3)
-		self.goal_pos_y = random.uniform(-3,3)
+		self.new_goal()
+
 
 		# reset other elements if any
 
@@ -118,9 +118,7 @@ class Pic4rl(Node):
 	# Process state and obtain observation
 	def get_observation(self,args=None):
 		self.get_logger().debug('	[1]  get_observation ...')
-		# inherited from MobileRobotState
 		self.update_observation()
-		# inherited from MobileRobotState
 		return self.observation[-1] #from deque with len 2
 
 	# STEP
@@ -142,6 +140,15 @@ class Pic4rl(Node):
 		self.get_logger().debug('	[1] get_reward ...')
 		self.compute_reward()
 		
+
+	"""#
+	# -2
+	#"""
+
+	def compute_reward(self,args=None):
+
+		NotImplementedError
+
 
       
 #def main(args=None):
