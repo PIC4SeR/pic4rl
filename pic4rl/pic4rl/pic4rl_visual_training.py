@@ -34,15 +34,26 @@ import sys
 import time
 import math
 
-from pic4rl.pic4rl_environment import Pic4rlEnvironment
-from pic4rl.ddpg_agent import DDPGLidarAgent
-from pic4rl.ddpg_visual_agent import DDPGVisualAgent
-from pic4rl.trainer import Pic4Trainer, Pic4VisualTrainer
 
+from pic4rl.pic4rl_env import Pic4rl
+from pic4rl.agents.ddpg_agent import DDPGLidarAgent
+from pic4rl.agents.ddpg_visual_agent import DDPGVisualAgent
+from pic4rl.agents.trainer import Pic4Trainer, Pic4VisualTrainer
 
-class Pic4rlTraining(Pic4rlEnvironment):
+from pic4rl.tasks.pic4rl_navigation_learning import OdomDepthNavigation
+
+class Pic4rlEnvironment(
+    OdomDepthNavigation, 
+    Pic4rl
+    ):
+
     def __init__(self):
-        super().__init__()
+        Pic4rl.__init__(self)
+        OdomDepthNavigation.__init__(self)
+
+
+class Pic4rlTraining():
+    def __init__(self):
         #rclpy.logging.set_logger_level('pic4rl_training', 20)
         #rclpy.logging.set_logger_level('pic4rl_environment', 10)
 
@@ -103,19 +114,21 @@ class Pic4rlTraining(Pic4rlEnvironment):
 
         # Define and stat training process
         #self.Trainer = Pic4Trainer(self.Agent, self.load_episode, self.episode_size, self.train_start)
-        self.Trainer = Pic4VisualTrainer(self.Agent, self.load_episode, self.episode_size, self.train_start)
+        self.Trainer = Pic4VisualTrainer(self.Agent, self.load_episode,\
+                                         self.episode_size, self.train_start,\
+                                         Pic4rlEnvironment)
+
         self.Trainer.process()
 
 
 def main(args=None):
-    rclpy.init()
-    pic4rl_training= Pic4rlTraining()
-
-    pic4rl_training.get_logger().info('Node spinning ...')
-    rclpy.spin(pic4rl_training)
-
-    pic4rl_training.destroy()
-    rclpy.shutdown()
+    try:
+        rclpy.init()
+        pic4rl_training= Pic4rlTraining()
+        pic4rl_training.learn()
+    finally:
+        pic4rl_training.Trainer.env.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

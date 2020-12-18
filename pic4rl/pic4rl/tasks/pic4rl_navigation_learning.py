@@ -33,6 +33,7 @@ from pic4rl.tasks.pic4rl_state import OdomLidarState, OdomLidarObs
 from pic4rl.tasks.pic4rl_state import OdomState, OdomObs
 from pic4rl.tasks.pic4rl_state import RandomGoal
 from pic4rl.tasks.pic4rl_state import OdomGoalLidarCollision
+from pic4rl.tasks.pic4rl_state import *
 
 from pic4rl.tasks.pic4rl_rewards import SimpleDistanceReward
 
@@ -108,6 +109,37 @@ class OdomNavigation(
 		OdomState.__init__(self)
 		OdomObs.__init__(self)
 		SimpleDistanceReward.__init__(self)
+class OdomDepthNavigation(
+	OdomGoalLidarCollision,
+	RandomGoal, 
+	SimpleDistanceReward,
+	OdomDepthObs,
+	OdomDepthState,
+	Sensors,
+	WheeledRobot):
+
+	# This class refers to a navigation task in which
+	# a ground mobile robot uses
+	#	Odometry 	(<-- /odom)
+	#	Lidar 		(<-- /scan)
+	# 
+	# To reach goals that are spawned.
+	# The robot can have differential/holonomic locomotion
+	# system
+	#
+	#
+	#
+	def __init__(self):
+		self.get_logger().debug('[LidarNavigation] Initialization.')
+		Sensors.__init__(self, 
+				generic_laser_scan_sensor = True,
+				odometry_sensor = True)
+		WheeledRobot.__init__(self) #currently only differential
+		OdomLidarState.__init__(self)
+		OdomLidarObs.__init__(self)
+		SimpleDistanceReward.__init__(self)
+		RandomGoal.__init__(self)
+		OdomGoalLidarCollision.__init__(self)
 
 
 

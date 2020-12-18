@@ -196,6 +196,23 @@ class OdomObs():
 		goal_angle = goal_pose_to_angle(x,y,yaw, self.goal_pos_x, self.goal_pos_y)
 		self.observation.append( [goal_distance]+[goal_angle])
 
+class OdomDepthObs():
+	def __init__(self):
+		self.get_logger().debug('[OdomDepthObs] Initialization.')
+
+		self.observation = collections.deque(maxlen=2) 
+
+	def update_observation(self):
+		x, y, yaw = pose_2_xyyaw(self.odometry_msgs[-1])
+		goal_distance = goal_pose_to_distance(x,y,self.goal_pos_x, self.goal_pos_y)
+		goal_angle = goal_pose_to_angle(x,y,yaw, self.goal_pos_x, self.goal_pos_y)
+		depth_img = clean_raw_depth(self.generic_depth_camera_img)
+		self.observation.append([goal_distance] + \
+								[goal_angle] 	+ \
+								depth_img)
+
+
+
 """
 # GOALS
 """

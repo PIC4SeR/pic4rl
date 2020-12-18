@@ -141,10 +141,9 @@ class Pic4Trainer():
 
 
 class Pic4VisualTrainer():
-	def __init__(self, agent, load_episode, episode_size, train_start):
-		super().__init__()
+	def __init__(self, agent, load_episode, episode_size, train_start, env):
 
-		self.env = Pic4rlEnvironment()
+		self.env = env()
 		self.Agent = agent
 		self.load_episode = load_episode
 		self.episode_size = episode_size
