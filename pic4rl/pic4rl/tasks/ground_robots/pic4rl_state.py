@@ -132,21 +132,6 @@ class OdomState():
 	def update_state(self):
 		self.odometry_msgs.append(self.odometry_msg)
 
-class OdomDepthState():
-	# Sensors callbacks store msgs in this attributes:
-	# 	>> self.laser_scan_msg_data <<
-	# 	>> self.odometry_msg_data <<
-	def __init__(self):
-		self.get_logger().debug('[OdomDepthState] Initialization.')
-
-		self.odometry_msgs = collections.deque(maxlen=2) 
-		self.camera_depth_msgs = collections.deque(maxlen=2) 
-		self.done = None
-
-	def update_state(self):
-		self.odometry_msgs.append(self.odometry_msg)
-		self.camera_depth_msgs.append(self.camera_depth_msg)
-
 """
 # OBSERVATIONS
 """
