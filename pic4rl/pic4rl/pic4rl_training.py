@@ -39,7 +39,6 @@ from pic4rl.agents.ddpg_visual_agent import DDPGVisualAgent
 from pic4rl.agents.trainer import Pic4Trainer, Pic4VisualTrainer
 
 from pic4rl.pic4rl_robots import MobileRobotState
-from pic4rl.sensors.pic4rl_sensors import s7b3State
 
 from pic4rl.sensors.pic4rl_sensors_class import Sensors
 from pic4rl.pic4rl_env import Pic4rl

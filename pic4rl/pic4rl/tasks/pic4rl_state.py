@@ -5,6 +5,7 @@ import time
 import numpy as np
 import random 
 import math 
+import os
 
 # ROS related
 import rclpy
@@ -14,10 +15,10 @@ from std_msgs.msg import String
 from std_srvs.srv import Empty
 
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Pose
 
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
-
 
 from rclpy.qos import QoSProfile
 from rclpy.qos import qos_profile_sensor_data
@@ -230,6 +231,15 @@ class RandomGoal():
 		self.goal_pos_x = None
 		self.goal_pos_y = None
 
+		entity_dir_path = os.path.dirname(os.path.realpath(__file__))
+		entity_dir_path = entity_dir_path.replace(
+			'pic4rl/pic4rl/pic4rl/tasks',
+			'pic4rl/pic4rl/models/goal_box')
+		entity_path = os.path.join(entity_dir_path, 'model.sdf')
+		self.entity = open(entity_path, 'r').read()
+		self.entity_name = 'goal'
+
+		
 	def new_goal(self):
 
 		self.goal_pos_x = random.uniform(
@@ -238,6 +248,20 @@ class RandomGoal():
 			self._goal_range[0],self._goal_range[1])
 		msg = '[RandomGoal] New goal x, y : {:.2f}, {:.2f}'.format(self.goal_pos_x, self.goal_pos_y)
 		self.get_logger().info(msg)
+
+		self.get_logger().debug("[RandomGoal] Deleting entity...")
+		try:
+			self.delete_entity(name = 'goal')
+		except:
+			pass
+		self.get_logger().debug("respawning entity...")
+
+		initial_pose = Pose()
+		initial_pose.position.x = self.goal_pos_x
+		initial_pose.position.y = self.goal_pos_y
+		self.spawn_entity(pose = initial_pose,
+							name = self.entity_name,
+							entity = self.entity)
 
 """
 # ENDS OF EPISODE
@@ -248,12 +272,15 @@ class OdomGoalLidarCollision():
 	This class allows a 
 	"""
 	def __init__(self,
-	 			collision_distance = 0.2,
-	 			min_distance = 0.15
+				collision_distance = 0.2,
+				min_distance = 0.15,
+				episode_timeout = 60 #seconds
 				):
 		self.get_logger().info('[OdomGoalLidarCollision] Initialization.')
 		self.collision_distance = collision_distance
 		self.min_distance = min_distance
+		self.episode_timeout = episode_timeout
+		self.episode_start_time = time.time()
 
 	def check_done(self):
 		self.done = False
@@ -275,6 +302,12 @@ class OdomGoalLidarCollision():
 			self.done = True
 			return
 
+		if time.time() - self.episode_start_time > self.episode_timeout:
+			self.get_logger().info('[OdomGoalLidarCollision] Timeout!!')
+			self.done = True
+			self.episode_start_time = time.time() # Set current time as start
+			# This actually is incorrect, since some times passes before episode start
+			return
 
 """
 # Auxiliar functions ()

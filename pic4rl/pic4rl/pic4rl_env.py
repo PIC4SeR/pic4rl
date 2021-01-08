@@ -21,8 +21,10 @@ from pic4rl.utils.pic4rl_utils import SpinWithTimeout
 from pic4rl.utils.pic4rl_utils import Differential2Twist
 
 import pic4rl.utils.pic4rl_services
-from pic4rl.utils.pic4rl_services import ResetWorldService, PauseService , UnpauseService
-		
+from pic4rl.utils.pic4rl_services import PauseService, UnpauseService
+from pic4rl.utils.pic4rl_services import ResetWorldService, SpawnEntityService
+from pic4rl.utils.pic4rl_services import DeleteEntityService
+
 class Pic4rl(Node):
 	def __init__(self):
 		Node.__init__(self, node_name ="pic4rl")
@@ -82,6 +84,8 @@ class Pic4rl(Node):
 		PauseService(self)
 		self.pause() # So that the simulation start paused
 		UnpauseService(self)
+		SpawnEntityService(self)
+		DeleteEntityService(self)
 
 		Differential2Twist(self)
 

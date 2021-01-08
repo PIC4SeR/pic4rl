@@ -61,4 +61,39 @@ class UnpauseService():
 
 		self.parent_node.unpause_physics_client.call_async(req) 
 
+class SpawnEntityService():
+	def __init__(self, parent_node):
+		self.parent_node = parent_node
+		self.parent_node.get_logger().debug("Spawn Entity client created.")
+		parent_node.spawn_entity_client = parent_node.create_client(SpawnEntity, 'spawn_entity')
+		parent_node.spawn_entity = self.spawn_entity
 
+	def spawn_entity(self, pose = None, name = None, entity_path = None, entity = None):
+		if not pose:
+			pose = Pose()
+
+		req = SpawnEntity.Request()
+		req.name = name
+		if entity_path:
+			entity = open(entity_path, 'r').read()
+		req.xml = entity
+		req.initial_pose = pose
+		while not self.parent_node.spawn_entity_client.wait_for_service(timeout_sec=1.0):
+			self.parent_node.get_logger().info('\'spawn_entity\' service not available, waiting again...')
+		self.parent_node.spawn_entity_client.call_async(req)
+
+class DeleteEntityService():
+	def __init__(self, parent_node):
+		self.parent_node = parent_node
+		self.parent_node.get_logger().debug("Unpause client created.")
+		parent_node.delete_entity_client = parent_node.create_client(DeleteEntity, 'delete_entity')
+		parent_node.delete_entity = self.delete_entity
+
+	def delete_entity(self, name = None):
+		req = DeleteEntity.Request()
+		req.name = name
+		while not self.parent_node.delete_entity_client.wait_for_service(timeout_sec=1.0):
+			self.parent_node.get_logger().info('\'delete_entity\' service not available, waiting again...')
+
+		self.parent_node.delete_entity_client.call_async(req)
+		self.parent_node.get_logger().debug('Entity deleting request sent ...')
