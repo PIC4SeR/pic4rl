@@ -1,0 +1,446 @@
+<sdf version='1.6'>
+  <model name='s7b3'>
+    <link name='footprint'>
+      <pose frame=''>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose frame=''>0 0 0.124945 0 -0 0</pose>
+        <mass>9.1</mass>
+        <inertia>
+          <ixx>0.128435</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.128435</iyy>
+          <iyz>0</iyz>
+          <izz>0.122611</izz>
+        </inertia>
+      </inertial>
+      <collision name='footprint_fixed_joint_lump__camera_link_collision'>
+        <pose frame=''>0 0 0.3 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.03</length>
+            <radius>0.035</radius>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <ode/>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+      <collision name='footprint_fixed_joint_lump__lidar_link_collision_1'>
+        <pose frame=''>0 0 0.24 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.03</length>
+            <radius>0.035</radius>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <ode/>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+      <collision name='footprint_fixed_joint_lump__lower_plate_link_collision_2'>
+        <pose frame=''>0 0 0.019 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.003</length>
+            <radius>0.13</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name='footprint_fixed_joint_lump__middle_plate_link_collision_3'>
+        <pose frame=''>0 0 0.124 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.003</length>
+            <radius>0.18</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name='footprint_fixed_joint_lump__upper_plate_link_collision_4'>
+        <pose frame=''>0 0 0.227 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.003</length>
+            <radius>0.18</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name='footprint_fixed_joint_lump__camera_link_visual'>
+        <pose frame=''>0 0 0.3 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.03</length>
+            <radius>0.035</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <uri>__default__</uri>
+            <name>__default__</name>
+          </script>
+        </material>
+      </visual>
+      <visual name='footprint_fixed_joint_lump__lidar_link_visual_1'>
+        <pose frame=''>0 0 0.24 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.03</length>
+            <radius>0.035</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <uri>__default__</uri>
+            <name>__default__</name>
+          </script>
+        </material>
+      </visual>
+      <visual name='footprint_fixed_joint_lump__lower_plate_link_visual_2'>
+        <pose frame=''>0 0 0.019 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.003</length>
+            <radius>0.13</radius>
+          </cylinder>
+        </geometry>
+      </visual>
+      <visual name='footprint_fixed_joint_lump__middle_plate_link_visual_3'>
+        <pose frame=''>0 0 0.124 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.003</length>
+            <radius>0.18</radius>
+          </cylinder>
+        </geometry>
+      </visual>
+      <visual name='footprint_fixed_joint_lump__upper_plate_link_visual_4'>
+        <pose frame=''>0 0 0.227 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.003</length>
+            <radius>0.18</radius>
+          </cylinder>
+        </geometry>
+      </visual>
+      <velocity_decay/>
+      <sensor name='sensor_name' type='depth'>
+        <always_on>1</always_on>
+        <visualize>1</visualize>
+        <update_rate>1</update_rate>
+        <camera name='camera_name'>
+          <distortion>
+            <k1>0.1</k1>
+            <k2>0.2</k2>
+            <k3>0.3</k3>
+            <p1>0.4</p1>
+            <p2>0.5</p2>
+            <center>0.5 0.5</center>
+          </distortion>
+          <horizontal_fov>1.047</horizontal_fov>
+          <image>
+            <width>320</width>
+            <height>240</height>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+        </camera>
+        <plugin name='plugin_name' filename='libgazebo_ros_camera.so'>
+          <ros>
+            <namespace>custom_ns</namespace>
+            <argument>custom_camera/image_raw:=custom_camera/custom_image</argument>
+            <argument>custom_camera/image_depth:=custom_camera/custom_image_depth</argument>
+            <argument>custom_camera/camera_info:=custom_camera/custom_info_raw</argument>
+            <argument>custom_camera/camera_info_depth:=custom_camera/custom_info_depth</argument>
+            <argument>custom_camera/points:=custom_camera/custom_points</argument>
+          </ros>
+          <camera_name>custom_camera</camera_name>
+          <frame_name>custom_frame</frame_name>
+          <hack_baseline>0.07</hack_baseline>
+          <min_depth>0.001</min_depth>
+        </plugin>
+        <pose frame=''>0 0 0.3 0 -0 0</pose>
+      </sensor>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <sensor name='lidar' type='ray'>
+        <always_on>0</always_on>
+        <visualize>0</visualize>
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>360</samples>
+              <resolution>1</resolution>
+              <min_angle>0</min_angle>
+              <max_angle>6.28</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.12</min>
+            <max>25</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0</mean>
+            <stddev>0.01</stddev>
+          </noise>
+        </ray>
+        <update_rate>5</update_rate>
+        <plugin name='scan' filename='libgazebo_ros_ray_sensor.so'>
+          <ros>
+            <namespace>/</namespace>
+            <argument>~/out:=scan</argument>
+          </ros>
+          <output_type>sensor_msgs/LaserScan</output_type>
+        </plugin>
+        <pose frame=''>0 0 0.24 0 -0 0</pose>
+      </sensor>
+    </link>
+    <link name='wheel_link_back'>
+      <pose frame=''>-0.18 0 0.05 0 -0 3.14159</pose>
+      <inertial>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <mass>0.4</mass>
+        <inertia>
+          <ixx>0.0124118</ixx>
+          <ixy>-0.000711734</ixy>
+          <ixz>0.00050273</ixz>
+          <iyy>0.0152182</iyy>
+          <iyz>-4.27347e-06</iyz>
+          <izz>0.011764</izz>
+        </inertia>
+      </inertial>
+      <collision name='wheel_link_back_collision'>
+        <pose frame=''>0 0 0 3.14159 1.57079 3.14159</pose>
+        <geometry>
+          <cylinder>
+            <length>0.025</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <ode>
+              <kp>1e+07</kp>
+              <kd>1</kd>
+            </ode>
+          </contact>
+          <friction>
+            <ode>
+              <mu>1</mu>
+              <mu2>0</mu2>
+              <fdir1>0 1 0</fdir1>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name='wheel_link_back_visual'>
+        <pose frame=''>0 0 0 3.14159 1.57079 3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.05 0.05 0.04</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>__default__</uri>
+            <name>__default__</name>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='wheel_joint_back' type='revolute'>
+      <child>wheel_link_back</child>
+      <parent>footprint</parent>
+      <axis>
+        <xyz>-1 0 0</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <link name='wheel_link_left'>
+      <pose frame=''>0.09 0.155885 0.05 0 -0 1.0472</pose>
+      <inertial>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <mass>0.4</mass>
+        <inertia>
+          <ixx>0.0124118</ixx>
+          <ixy>-0.000711734</ixy>
+          <ixz>0.00050273</ixz>
+          <iyy>0.0152182</iyy>
+          <iyz>-4.27347e-06</iyz>
+          <izz>0.011764</izz>
+        </inertia>
+      </inertial>
+      <collision name='wheel_link_left_collision'>
+        <pose frame=''>0 0 0 3.14159 1.57079 3.14159</pose>
+        <geometry>
+          <cylinder>
+            <length>0.025</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <ode>
+              <kp>1e+07</kp>
+              <kd>1</kd>
+            </ode>
+          </contact>
+          <friction>
+            <ode>
+              <mu>1</mu>
+              <mu2>0</mu2>
+              <fdir1>0 1 0</fdir1>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name='wheel_link_left_visual'>
+        <pose frame=''>0 0 0 3.14159 1.57079 3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.05 0.05 0.04</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>__default__</uri>
+            <name>__default__</name>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='wheel_joint_left' type='revolute'>
+      <child>wheel_link_left</child>
+      <parent>footprint</parent>
+      <axis>
+        <xyz>0.5 0.866025 0</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <link name='wheel_link_right'>
+      <pose frame=''>0.09 -0.155885 0.05 0 -0 -1.0472</pose>
+      <inertial>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <mass>0.4</mass>
+        <inertia>
+          <ixx>0.0124118</ixx>
+          <ixy>-0.000711734</ixy>
+          <ixz>0.00050273</ixz>
+          <iyy>0.0152182</iyy>
+          <iyz>-4.27347e-06</iyz>
+          <izz>0.011764</izz>
+        </inertia>
+      </inertial>
+      <collision name='wheel_link_right_collision'>
+        <pose frame=''>0 0 0 3.14159 1.57079 3.14159</pose>
+        <geometry>
+          <cylinder>
+            <length>0.025</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <ode>
+              <kp>1e+07</kp>
+              <kd>1</kd>
+            </ode>
+          </contact>
+          <friction>
+            <ode>
+              <mu>1</mu>
+              <mu2>0</mu2>
+              <fdir1>0 1 0</fdir1>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name='wheel_link_right_visual'>
+        <pose frame=''>0 0 0 3.14159 1.57079 3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.05 0.05 0.04</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>__default__</uri>
+            <name>__default__</name>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='wheel_joint_right' type='revolute'>
+      <child>wheel_link_right</child>
+      <parent>footprint</parent>
+      <axis>
+        <xyz>0.5 -0.866025 0</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <static>0</static>
+    <plugin name='gazebo_omni_3wd_drive' filename='libgazebo_ros_omni_3wd_drive.so'>
+      <ros>
+        <namespace>/</namespace>
+      </ros>
+      <update_rate>50</update_rate>
+      <left_joint>wheel_joint_left</left_joint>
+      <right_joint>wheel_joint_right</right_joint>
+      <back_joint>wheel_joint_back</back_joint>
+      <wheel_separation>0.18</wheel_separation>
+      <wheel_diameter>0.1</wheel_diameter>
+      <max_wheel_torque>20</max_wheel_torque>
+      <max_acceleration>1.0</max_acceleration>
+      <publish_odom>1</publish_odom>
+      <publish_odom_tf>0</publish_odom_tf>
+      <publish_wheel_tf>0</publish_wheel_tf>
+      <odometry_frame>odom</odometry_frame>
+      <odometry_source>1</odometry_source>
+      <robot_base_frame>footprint</robot_base_frame>
+    </plugin>
+  </model>
+</sdf>
+[1;36m[0m[1;32m[0m

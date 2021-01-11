@@ -12,14 +12,14 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name), glob('launch/*.launch.py')),
-        (os.path.join(os.path.join('share', package_name),"agents"),\
-                                 glob('agents/*.py')),
-        (os.path.join(os.path.join('share', package_name),"sensors"),\
-                                 glob('sensors/*.py')),
-        (os.path.join(os.path.join('share', package_name),"tasks"),\
-                                 glob('tasks/*.py')),
-        (os.path.join(os.path.join('share', package_name),"utils"),\
-                                 glob('utils/*.py'))                       
+        (os.path.join(os.path.join('share', package_name),"agents"),glob('agents/*.py')),
+        (os.path.join(os.path.join('share', package_name),"sensors"),glob('sensors/*.py')),
+        (os.path.join(os.path.join('share', package_name),"tasks"),glob('tasks/*.py')),
+        (os.path.join(os.path.join('share', package_name),"utils"),glob('utils/*.py')),
+
+        # TO DO automatize setup of models
+        (os.path.join('share', package_name,"models"),glob('models/robots/s7b3/*.*')),       
+        (os.path.join('share', package_name,"worlds"),glob('worlds/*.world')),               
 
     ],
     install_requires=['setuptools'],
