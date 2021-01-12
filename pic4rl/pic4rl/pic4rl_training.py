@@ -45,19 +45,20 @@ from pic4rl.pic4rl_env import Pic4rl
 
 from pic4rl.tasks.pic4rl_navigation_learning import LidarNavigation
 from pic4rl.tasks.pic4rl_navigation_learning import OdomNavigation
+from pic4rl.tasks.pic4rl_navigation_task import Pic4rlTask
 
 from gym import spaces
 
 import gym
 
 class Pic4rlEnvironment(
-    LidarNavigation, 
+    Pic4rlTask, 
     Pic4rl
     ):
 
     def __init__(self):
         Pic4rl.__init__(self)
-        LidarNavigation.__init__(self)
+        Pic4rlTask.__init__(self)
         #MobileRobotState.__init__(self)
 
 class Pic4rlTraining():

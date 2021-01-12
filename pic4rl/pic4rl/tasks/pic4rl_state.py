@@ -234,7 +234,7 @@ class RandomGoal():
 		entity_dir_path = os.path.dirname(os.path.realpath(__file__))
 		entity_dir_path = entity_dir_path.replace(
 			'pic4rl/pic4rl/pic4rl/tasks',
-			'pic4rl/pic4rl/models/goal_box')
+			'pic4rl/pic4rl/models/environment_elements/goal_box')
 		entity_path = os.path.join(entity_dir_path, 'model.sdf')
 		self.entity = open(entity_path, 'r').read()
 		self.entity_name = 'goal'

@@ -1,0 +1,12 @@
+#pic4rl:
+#  ros__parameters:
+
+pic4rl:
+    task:
+        end_of_episode: "OdomGoalLidarCollision"
+        goal: "RandomGoal"
+        reward: "SimpleDistanceReward"
+        observation: "OdomLidarObs"
+        state: "OdomLidarState"
+        sensors: "Sensors"
+        locomotion: "WheeledRobot"

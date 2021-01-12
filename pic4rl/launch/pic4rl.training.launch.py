@@ -26,19 +26,31 @@
 
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch.actions import ExecuteProcess
 
 package_name = 'pic4rl'
 
 def generate_launch_description():
+    # return LaunchDescription([
+    #     Node(
+    #         package= package_name,
+    #         #node_namespace='pic4rl_training',
+    #         node_executable='pic4rl_training',
+    #         #node_name='pic4rl_training'
+    #         node_name='pic4rl'
+    #     )
+
+    # ])
     return LaunchDescription([
-        Node(
-            package= package_name,
-            #node_namespace='pic4rl_training',
-            node_executable='pic4rl_training',
-            #node_name='pic4rl_training'
-            node_name='pic4rl',
-            output = 'screen'
-        )
+        ExecuteProcess(
+            cmd=['ros2', 'run',
+            package_name, 'pic4rl_training'],
+            output='screen'),
+
+        #IncludeLaunchDescription(
+        #    PythonLaunchDescriptionSource([launch_file_dir, '/robot_state_publisher.launch.py']),
+        #    launch_arguments={'use_sim_time': use_sim_time}.items(),
+        #),
     ])
 
 # def generate_launch_description():
