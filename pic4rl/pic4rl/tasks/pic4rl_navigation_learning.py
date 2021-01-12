@@ -43,6 +43,37 @@ from gym import spaces
 
 import collections
 
+# TO DO CONDITIONAL INHERITANCE (AS SHOWN:)
+# cA1 = True
+# cB1 = False
+
+# class A1:
+# 	def __init__(self):
+# 		print("class A1")
+
+# class A2:
+# 	def __init__(self):
+# 		print("class A2")
+
+# class B1:
+# 	def __init__(self):
+# 		print("class B1")
+
+# class B2:
+# 	def __init__(self):
+# 		print("class B2")
+
+# A = A1 if cA1 else A2
+# B = B1 if cB1 else B2
+
+# class C(A, B ):
+# 	def __init__(self):
+# 		print("class C")
+# 		A.__init__(self)
+# 		B.__init__(self)
+
+# c = C()
+
 class Pic4Navigation():
 	def __init__(self):
 		pass
