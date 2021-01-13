@@ -30,7 +30,7 @@ class Pic4Trainer():
 		self.Agent = agent
 		self.load_episode = load_episode
 		self.episode_size = episode_size
-		self.eval_episode = 20
+		self.eval_episode = 19
 		self.train_start = train_start
 		self.train_score_list = []
 		self.eval_score_list = []
@@ -59,7 +59,7 @@ class Pic4Trainer():
 			self.train_score_list.append(score)
 
 			# Update result and save model every 20 episodes
-			if episode > 600 and episode % 20 == 0:
+			if episode > 500 and episode % 20 == 0:
 				self.save_score(episode)
 				self.Agent.save_model(episode, param_dictionary)
 
@@ -89,7 +89,7 @@ class Pic4Trainer():
 
 			else:
 				state = next_state
-				ction = self.Agent.get_action(state)
+				action = self.Agent.get_action(state)
 
 				if np.any(np.isnan(action)):
 					print("Action:", action)
@@ -104,14 +104,14 @@ class Pic4Trainer():
 				self.Agent.remember(state, action, next_state, reward, done)
 
 				if global_step > self.train_start:
-					time_check = time.time()
+					#time_check = time.time()
 					self.Agent.train()
-					print('Total time for training:', time.time() - time_check)
+					#print('Total time for training:', time.time() - time_check)
 
 					# UPDATE TARGET NETWORKS
-					time_check= time.time()
+					#time_check= time.time()
 					self.Agent.update_target_model_soft()
-					print('time for target model update:', time.time()-time_check)
+					#print('time for target model update:', time.time()-time_check)
 			
 			score += reward
 		return score
@@ -146,7 +146,7 @@ class Pic4VisualTrainer():
 		self.load_episode = load_episode
 		self.episode_size = episode_size
 		self.train_start = train_start
-		self.eval_episode = 20
+		self.eval_episode = 19
 		self.train_score_list = []
 		self.eval_score_list = []
 		self.results_path = '/home/mauromartini/mauro_ws/scores/camera/rosbot/last'
@@ -179,7 +179,7 @@ class Pic4VisualTrainer():
 				self.eval_score_list.append(score)
 
 			# Update result and save model every 20 episodes
-			if episode > 600 and episode % 20 == 0:
+			if episode > 500 and episode % 20 == 0:
 				self.save_score(episode)
 				self.Agent.save_model(episode, param_dictionary)
 

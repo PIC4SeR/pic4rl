@@ -69,7 +69,7 @@ class ActorNetwork(Model):
 
 class CriticNetwork(Model):
 	def __init__(self, state_size, action_size, lr = 0.001, fc_act_dims = 64,
-		    fc1_dims = 256, fc2_dims = 256, fc3_dims = 128, name = 'critic', **kwargs):
+			fc1_dims = 256, fc2_dims = 256, fc3_dims = 128, name = 'critic', **kwargs):
 		super(CriticNetwork, self).__init__(**kwargs)
 
 		self.model_dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -177,13 +177,13 @@ class ActorCNNetwork(Model):
 		self.linear_out = Dense(1, activation = 'sigmoid')
 		self.angular_out = Dense(1, activation = 'tanh')
 		
-		# dummy_goal = tf.constant(
-		# 	np.zeros(shape=(1,) + self.goal_shape, dtype=np.float32))
-		# dummy_image = tf.constant(
-		# 	np.zeros(shape= self.image_shape, dtype=np.float32))
+		dummy_goal = tf.constant(
+		 	np.zeros(shape=(1,) + self.goal_shape, dtype=np.float32))
+		dummy_image = tf.constant(
+		 	np.zeros(shape= self.image_shape, dtype=np.float32))
 
 		self.model()
-		#self(dummy_goal, dummy_image)
+		self(dummy_goal, dummy_image)
 
 	def call(self, goal, depth_image):
 		c1 = self.conv1(depth_image)
@@ -256,14 +256,14 @@ class CriticCNNetwork(Model):
 		#Output Layer
 		self.out = Dense(1, activation='linear')
 		
-		# dummy_goal = tf.constant(
-		# 	np.zeros(shape = (1,) + self.goal_shape, dtype=np.float32))
-		# dummy_image = tf.constant(
-		# 	np.zeros(shape = self.image_shape, dtype=np.float32))
-		# dummy_action = tf.constant(
-		# 	np.zeros(shape = (1, 2,), dtype=np.float32))
+		dummy_goal = tf.constant(
+		 	np.zeros(shape = (1,) + self.goal_shape, dtype=np.float32))
+		dummy_image = tf.constant(
+		 	np.zeros(shape = self.image_shape, dtype=np.float32))
+		dummy_action = tf.constant(
+			np.zeros(shape = (1, 2,), dtype=np.float32))
 
-		# #self(dummy_goal, dummy_image, dummy_action)
+		self(dummy_goal, dummy_image, dummy_action)
 		self.model()
 
 	def call(self, goal, depth_image, action):

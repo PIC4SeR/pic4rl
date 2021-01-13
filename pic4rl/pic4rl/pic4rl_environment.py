@@ -213,12 +213,12 @@ class Pic4rlEnvironment(Node):
 			self.get_logger().info('Collision')
 			return True, "collision"
 
-		if goal_distance < 0.2:
+		if goal_distance < 0.22:
 			# Goal reached
 			self.get_logger().info('Goal')
 			return True, "goal"
 
-		if step >= 500:
+		if step >= 600:
 			#Timeout
 			self.get_logger().info('Timeout')
 			return True, "timeout"
@@ -260,10 +260,9 @@ class Pic4rlEnvironment(Node):
 	def get_reward(self,twist,lidar_measurements, goal_distance, goal_angle, pos_x, pos_y, yaw, done, event):
 		if self.episode <= 600:
 			yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.9
-		elif self.episode > 600 and self.episode <= 1200:
+		elif self.episode > 600:
 			yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.5
-		elif self.episode > 1200:
-			yaw_reward = (1 - 2*math.sqrt(math.fabs(goal_angle / math.pi)))*0.2		
+
         #yaw_reward = - (1/(1.2*DESIRED_CTRL_HZ) - self.goal_angle)**2 +1
 		#distance_reward = 2*((2 * self.previous_goal_distance) / \
 		#	(self.previous_goal_distance + goal_distance) - 1)
@@ -302,13 +301,15 @@ class Pic4rlEnvironment(Node):
 		if episode < 6 or episode % 25==0:
 				x = 0.35
 				y = 0.0
-		elif episode <= 600 :		
+		elif episode <= 650 :		
 				x = random.randrange(-17, 18) / 10.0
 				y = random.randrange(-17, 18) / 10.0
-		elif episode > 600:
-			goal_pose_list = [[3.0, 2.0],  [-3.0, -2.0], [-0.2, 4.0],  [-2.0, -4.0], [-4.0, 1.0], [-4.2, -4.2], [3.6, 3.6], [-2.5, -2.5], [2.2, 4.0], [3.5, 4.0], [2.5, -4.4],[4.5,4.5],
-							  [1.0, -4.0], [-1.9, -4.0], [-4.5, -3.0], [-4.1, 4.1],  [2.3, 4.2],  [-2.4, 4.2],  [1.3, -4.2],[-4.4, -1.0],  [4.0, 2.5],[-4.5, 0.8],[-0.5, -4.2], [-4.1, 0.0]]
-			index = random.randrange(0, 24)
+		elif episode > 650:
+			goal_pose_list = [[3.0, 2.0],  [-3.0, -2.0], [-2.5, 0.0], [2.0, -3.0], [3.0, -1.2], [0.7, 4.0], [-1.2,-2.2], [-0.2, 4.0], [-2.0, -4.0], 
+								[-4.0, 1.0], [-4.5, -4.2], [3.6, 3.6], [-2.5, -2.5], [2.2, 4.0], [3.5, 4.0], [2.5, -4.4], [4.5, 4.5], [4.0, -4.0], [3.5, -2.4],
+								[1.0, -4.0], [-1.9, -4.0], [-3.0 ,1.1], [-4.5, -3.0], [-4.1, 4.1], [2.3, 4.2], [-2.4, 4.2],
+								[1.3, -4.2], [-4.4, -1.0], [4.0, 2.5], [-4.5, 0.8],[-0.5, -4.2], [-4.1, 0.0], [-0.3, 2.5], [-1.2, 2.1]]
+			index = random.randrange(0, 33)
 			x = goal_pose_list[index][0]
 			y = goal_pose_list[index][1]
 		print("Goal pose: ", x, y)

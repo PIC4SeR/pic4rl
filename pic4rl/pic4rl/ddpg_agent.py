@@ -53,10 +53,12 @@ class DDPGLidarAgent:
 		# self.critic, self.critic_optimizer = self.build_critic()
 		# self.target_actor, _ = self.build_actor()
 		# self.target_critic, _ = self.build_critic()
-		self.actor = ActorNetwork(self.state_size, self.max_linear_vel, self.max_angular_vel, lr = 0.0001, name = 'actor')
-		self.target_actor = ActorNetwork(self.state_size, self.max_linear_vel, self.max_angular_vel, lr = 0.0001, name = 'target_actor')
-		self.critic = CriticNetwork(self.state_size, self.action_size, lr = 0.0005, name = 'critic')
-		self.target_critic = CriticNetwork(self.state_size, self.action_size, lr = 0.0005, name = 'target_critic')
+		self.actor = ActorNetwork(self.state_size, self.max_linear_vel, self.max_angular_vel, lr = 0.00025, fc1_dims = 256, fc2_dims = 128, fc3_dims = 128, name = 'actor')
+		self.target_actor = ActorNetwork(self.state_size, self.max_linear_vel, self.max_angular_vel, lr = 0.00025, fc1_dims = 256, fc2_dims = 128, fc3_dims = 128, name = 'target_actor')
+		self.critic = CriticNetwork(self.state_size, self.action_size, lr = 0.0005, fc_act_dims = 32,
+			fc1_dims = 256, fc2_dims = 128, fc3_dims = 128, name = 'critic')
+		self.target_critic = CriticNetwork(self.state_size, self.action_size, lr = 0.0005, fc_act_dims = 32,
+			fc1_dims = 256, fc2_dims = 128, fc3_dims = 128, name = 'target_critic')
 
 		self.update_target_model()
 
@@ -235,53 +237,6 @@ class DDPGLidarAgent:
 		self.actor.optimizer.apply_gradients(zip(actor_grad, self.actor.trainable_variables))
 		return actor_loss
 
-	def compute_q_targets(self, states, actions, next_states, rewards, dones):
-		#time_check = time.time()
-		target_actions = self.target_actor(next_states)  
-		target_actions = tf.reshape(target_actions, [self.batch_size, self.action_size])
-		target_q_values = self.target_critic(next_states, target_actions)
-		target_q_values = tf.reshape(target_q_values, [self.batch_size, ])
-		targets = rewards + target_q_values*self.discount_factor*(np.ones(shape=dones.shape, dtype=np.float32)-dones)
-		#print("np targets shape ",targets.shape)
-		#print("targets",targets)
-		return targets
-
-	@tf.function
-	def train_critic2(self, states, actions, next_states, rewards, dones):
-		with tf.GradientTape() as tape_critic:
-			target_actions = self.target_actor(next_states)
-			target_actions = tf.reshape(target_actions, [self.batch_size, self.action_size])
-
-			target_critic_values = tf.squeeze(self.target_critic(next_states, target_actions), 1)
-			target_q_values = rewards + target_critic_values*self.discount_factor*(np.ones(shape=dones.shape, dtype=np.float32)-dones)
-			predicted_qs = tf.squeeze(self.critic(states, actions),1)
-			critic_loss = mean_squared_error(target_q_values, predicted_qs)
-		critic_grad = tape_critic.gradient(critic_loss, self.critic.trainable_variables)
-		#print('critic grad', critic_grad)
-		self.critic.optimizer.apply_gradients(zip(critic_grad, self.critic.trainable_variables))
-
-	@tf.function
-	def train_actor2(self, states):
-	# This is the precise implementation according to the DDPG paper,
-	# however simplify the actor gradients expression is effective as well
-		with tf.GradientTape() as tape:
-			a = self.actor(states)
-			#tape.watch(a)
-			q = self.critic(states, a)
-		dq_da = tape.gradient(q, a)
-		#print('Action gradient dq_qa: ', dq_da)
-
-		with tf.GradientTape() as tape:
-			a = self.actor(states)
-			theta = self.actor.trainable_variables
-			#tape.watch(theta)
-		da_dtheta = tape.gradient(a, theta, output_gradients= -dq_da)
-		#print('Actor grad da_dtheta: ', da_dtheta)
-		actor_gradients = list(map(lambda x: tf.divide(x, self.batch_size), da_dtheta))
-		#print('actor grad', actor_gradients)
-		self.actor.optimizer.apply_gradients(zip(actor_gradients, self.actor.trainable_variables))
-		#self.actor_optimizer.apply_gradients(zip(da_dtheta, self.actor_model.trainable_variables))
-
 
 	def save_model(self, episode, param_dictionary):
 		actor_dir_path = os.path.join(
@@ -347,3 +302,50 @@ class DDPGLidarAgent:
 		model.summary()
 
 		return model, adam
+
+	def compute_q_targets(self, states, actions, next_states, rewards, dones):
+		#time_check = time.time()
+		target_actions = self.target_actor(next_states)  
+		target_actions = tf.reshape(target_actions, [self.batch_size, self.action_size])
+		target_q_values = self.target_critic(next_states, target_actions)
+		target_q_values = tf.reshape(target_q_values, [self.batch_size, ])
+		targets = rewards + target_q_values*self.discount_factor*(np.ones(shape=dones.shape, dtype=np.float32)-dones)
+		#print("np targets shape ",targets.shape)
+		#print("targets",targets)
+		return targets
+
+	@tf.function
+	def train_critic2(self, states, actions, next_states, rewards, dones):
+		with tf.GradientTape() as tape_critic:
+			target_actions = self.target_actor(next_states)
+			target_actions = tf.reshape(target_actions, [self.batch_size, self.action_size])
+
+			target_critic_values = tf.squeeze(self.target_critic(next_states, target_actions), 1)
+			target_q_values = rewards + target_critic_values*self.discount_factor*(np.ones(shape=dones.shape, dtype=np.float32)-dones)
+			predicted_qs = tf.squeeze(self.critic(states, actions),1)
+			critic_loss = mean_squared_error(target_q_values, predicted_qs)
+		critic_grad = tape_critic.gradient(critic_loss, self.critic.trainable_variables)
+		#print('critic grad', critic_grad)
+		self.critic.optimizer.apply_gradients(zip(critic_grad, self.critic.trainable_variables))
+
+	@tf.function
+	def train_actor2(self, states):
+	# This is the precise implementation according to the DDPG paper,
+	# however simplify the actor gradients expression is effective as well
+		with tf.GradientTape() as tape:
+			a = self.actor(states)
+			#tape.watch(a)
+			q = self.critic(states, a)
+		dq_da = tape.gradient(q, a)
+		#print('Action gradient dq_qa: ', dq_da)
+
+		with tf.GradientTape() as tape:
+			a = self.actor(states)
+			theta = self.actor.trainable_variables
+			#tape.watch(theta)
+		da_dtheta = tape.gradient(a, theta, output_gradients= -dq_da)
+		#print('Actor grad da_dtheta: ', da_dtheta)
+		actor_gradients = list(map(lambda x: tf.divide(x, self.batch_size), da_dtheta))
+		#print('actor grad', actor_gradients)
+		self.actor.optimizer.apply_gradients(zip(actor_gradients, self.actor.trainable_variables))
+		#self.actor_optimizer.apply_gradients(zip(da_dtheta, self.actor_model.trainable_variables))

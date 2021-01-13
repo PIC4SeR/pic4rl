@@ -83,7 +83,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
         #Instanciate DDPG Agent
         # self.Agent = DDPGLidarAgent(state_size = self.state_size, action_size = self.action_size, 
         #     max_linear_vel = self.max_linear_vel, max_angular_vel= self.max_angular_vel, 
-        #     max_memory_size = 200000, 
+        #     max_memory_size = 250000, 
         #     load = self.load_model,
         #     gamma = 0.99, epsilon = 1.0, epsilon_decay = 0.998, epsilon_min = 0.05, 
         #     tau = 0.01, 
@@ -94,7 +94,7 @@ class Pic4rlTraining(Pic4rlEnvironment):
             image_height = self.height, image_width = self.width,
             action_size = self.action_size, 
             max_linear_vel = self.max_linear_vel, max_angular_vel= self.max_angular_vel, 
-            max_memory_size = 150000, 
+            max_memory_size = 180000, 
             load = self.load_model,
             gamma = 0.99, epsilon = 1.0, epsilon_decay = 0.998, epsilon_min = 0.05, 
             tau = 0.01, 

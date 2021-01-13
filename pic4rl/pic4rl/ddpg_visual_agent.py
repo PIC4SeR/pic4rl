@@ -27,7 +27,7 @@ from pic4rl.replay_buffer import ReplayBufferCamera
 from pic4rl.NeuralNetworks import CriticCNNetwork, ActorCNNetwork
 
 class DDPGVisualAgent:
-	def __init__(self, state_size, image_height, image_width, action_size = 2, max_linear_vel = 0.8, max_angular_vel = 2, max_memory_size = 100000, load = False,
+	def __init__(self, state_size, image_height, image_width, action_size = 2, max_linear_vel = 0.8, max_angular_vel = 2, max_memory_size = 150000, load = False,
 			gamma = 0.99, epsilon = 1.0, epsilon_decay = 0.998, epsilon_min = 0.05, tau = 0.01, batch_size = 64, noise_std_dev = 0.2):
 
 
@@ -92,8 +92,7 @@ class DDPGVisualAgent:
 			self.target_critic.load_weights(target_critic_dir_path)
 			with open(os.path.join(
 					self.actor.model_dir_path,
-					#'epsilon_episode'+str(self.load_episode)+'.json')) as outfile:
-					'actor_stage1_episode600.json')) as outfile:
+					'epsilon_episode'+str(self.load_episode)+'.json')) as outfile:
 				param = json.load(outfile)
 				self.epsilon = param.get('epsilon')
    
