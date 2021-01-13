@@ -30,5 +30,3 @@ from pic4rl.sensors.pic4rl_sensors import clean_laserscan, laserscan_2_list, las
 
 import collections
 
-class Differential
-
