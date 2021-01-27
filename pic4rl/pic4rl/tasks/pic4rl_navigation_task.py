@@ -5,6 +5,8 @@ import time
 import numpy as np
 import random 
 import math 
+import os 
+from ament_index_python.packages import get_package_share_directory
 
 # ROS related
 import rclpy
@@ -28,13 +30,11 @@ from pic4rl.sensors.pic4rl_sensors import pose_2_xyyaw
 from pic4rl.sensors.pic4rl_sensors import clean_laserscan, laserscan_2_list, laserscan_2_n_points_list
 from pic4rl.sensors.pic4rl_sensors_class import Sensors
 
-from pic4rl.tasks.pic4rl_state import WheeledRobot
-from pic4rl.tasks.pic4rl_state import OdomLidarState, OdomLidarObs
-from pic4rl.tasks.pic4rl_state import OdomState, OdomObs
-from pic4rl.tasks.pic4rl_state import RandomGoal
-from pic4rl.tasks.pic4rl_state import OdomGoalLidarCollision
-from pic4rl.tasks.pic4rl_state import *
-
+from pic4rl.tasks.pic4rl_states import OdomLidarState, OdomState, OdomDepthState
+from pic4rl.tasks.pic4rl_end_of_episodes import OdomGoalLidarCollision
+from pic4rl.tasks.pic4rl_observations import  OdomLidarObs, OdomObs, OdomDepthObs
+from pic4rl.tasks.pic4rl_goals import RandomGoal
+from pic4rl.tasks.pic4rl_locomotions import WheeledRobot
 from pic4rl.tasks.pic4rl_rewards import SimpleDistanceReward
 
 import gym
@@ -44,12 +44,10 @@ from gym import spaces
 import collections
 import yaml
 
-entity_dir_path = os.path.dirname(os.path.realpath(__file__))
-entity_dir_path = entity_dir_path.replace(
-			'/pic4rl/tasks',
-			'/config')
 
-with open(os.path.join(entity_dir_path,"param.yaml")) as file:
+yaml_path = os.path.join(get_package_share_directory('pic4rl'),'config', "task_param.yaml")
+
+with open(yaml_path) as file:
 	params = yaml.load(file)
 
 arg_end_of_episode = params["pic4rl"]["task"]["end_of_episode"]
@@ -70,9 +68,14 @@ reward = SimpleDistanceReward if (arg_reward == "SimpleDistanceReward") else rew
 
 observation = None
 observation = OdomLidarObs if (arg_observation == "OdomLidarObs") else observation
+observation = OdomObs if (arg_observation == "OdomObs") else observation
+observation = OdomDepthObs if (arg_observation == "OdomDepthObs") else observation
 
 state = None
+print(arg_state)
 state = OdomLidarState if (arg_state == "OdomLidarState") else state
+state = OdomState if (arg_state == "OdomState") else state
+state = OdomDepthState if (arg_state == "OdomDepthState") else state
 
 locomotion = None
 locomotion = WheeledRobot if (arg_locomotion == "WheeledRobot") else locomotion

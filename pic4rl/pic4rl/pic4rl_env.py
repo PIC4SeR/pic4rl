@@ -28,21 +28,8 @@ from pic4rl.utils.pic4rl_services import DeleteEntityService
 class Pic4rl(Node):
 	def __init__(self):
 		Node.__init__(self, node_name ="pic4rl")
-		rclpy.logging.set_logger_level('pic4rl', 10)
-		self.declare_parameters(
-            namespace='',
-            parameters=[
-                ('bool_value', None),
-                ('int_number', None),
-                ('float_number', None),
-                ('str_text', None),
-                ('bool_array', None),
-                ('int_array', None),
-                ('float_array', None),
-                ('str_array', None),
-                ('bytes_array', None),
-                ('nested_param.another_int', None)
-            ])
+		#rclpy.logging.set_logger_level('pic4rl', 10)
+
 
 		#super(Sensors,self).__init__(GeneralLidar = True)
 		#self.state = MobileRobotState()
@@ -64,7 +51,7 @@ class Pic4rl(Node):
 	def reset(self,args=None):
 		self.get_logger().debug('[0] reset ...')
 		self.reset_gazebo()
-		self.collect_data_by_spinning(0.35)
+		self.collect_data_by_spinning(0.5)
 		self.raw_data_to_state()
 		self.get_observation()
 

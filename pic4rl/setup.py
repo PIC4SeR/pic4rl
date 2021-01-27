@@ -47,6 +47,8 @@ setup(
         #(os.path.join('share', package_name,"worlds"),glob('worlds/*.world')),               
     #
     ]+ get_data_files_list(os.path.join('share', package_name),'gazebo/models')
+    + get_data_files_list(os.path.join('share', package_name),'gazebo/worlds')
+    + get_data_files_list(os.path.join('share', package_name),'config/')
     ,
     maintainer='enricosutera',
     maintainer_email='enricosutera@outlook.com',

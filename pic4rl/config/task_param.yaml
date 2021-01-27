@@ -6,7 +6,7 @@ pic4rl:
         end_of_episode: "OdomGoalLidarCollision"
         goal: "RandomGoal"
         reward: "SimpleDistanceReward"
-        observation: "OdomLidarObs"
+        observation: "OdomObs"
         state: "OdomLidarState"
         sensors: "Sensors"
         locomotion: "WheeledRobot"

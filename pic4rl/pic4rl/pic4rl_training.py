@@ -25,7 +25,6 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from std_srvs.srv import Empty
 from geometry_msgs.msg import Twist
-from pic4rl_msgs.srv import State, Reset, Step
 
 import json
 import numpy as np
@@ -43,8 +42,6 @@ from pic4rl.pic4rl_robots import MobileRobotState
 from pic4rl.sensors.pic4rl_sensors_class import Sensors
 from pic4rl.pic4rl_env import Pic4rl
 
-from pic4rl.tasks.pic4rl_navigation_learning import LidarNavigation
-from pic4rl.tasks.pic4rl_navigation_learning import OdomNavigation
 from pic4rl.tasks.pic4rl_navigation_task import Pic4rlTask
 
 from gym import spaces
@@ -78,16 +75,16 @@ class Pic4rlTraining():
         #self.evalutate_Hz(init=True)
 
         # State size and action size
-        self.state_size = 62 #goal distance, goal angle, lidar points
+        self.state_size = 2 #goal distance, goal angle, lidar points
         self.action_size = 2 #linear velocity, angular velocity
         self.height = 60
         self.width = 80
         self.episode_size = 8000
 
         # Velocity limits and Controller freq
-        self.max_linear_vel = 0.8
-        self.max_angular_vel = 2
-        self.control_freq = 5
+        self.max_linear_vel = 0.5
+        self.max_angular_vel = 1.5
+        self.control_freq = 10
 
         # Training parameters
         self.batch_size = 64

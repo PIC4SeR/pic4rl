@@ -23,7 +23,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-
 # General purpose
 import time
 import numpy as np
@@ -59,65 +58,72 @@ from gym import spaces
 
 import collections
 
-class WheeledRobot():
+
+class OdomLidarState():
+	# Sensors callbacks store msgs in this attributes:
+	# 	>> self.laser_scan_msg_data <<
+	# 	>> self.odometry_msg_data <<
 	def __init__(self):
+		self.get_logger().debug('[OdomLidarState] Initialization.')
 
-		max_linear_x_speed = 0.3
-		min_linear_x_speed = -0.3
+		self.odometry_msgs = collections.deque(maxlen=2) 
+		self.laser_scan_msgs = collections.deque(maxlen=2) 
+		self.goal_pose = collections.deque(maxlen=2) 
+		self.done = None
 
-		#max_linear_y_speed = 0.5
-		#min_linear_y_speed = -0.5
+	def update_state(self):
+		self.odometry_msgs.append(self.odometry_msg)
+		self.laser_scan_msgs.append(self.laser_scan_msg)
 
-		max_angular_z_speed = 1
-		min_angular_z_speed = -1.0
+class OdomState():
+	# Sensors callbacks store msgs in this attributes:
+	# 	>> self.odometry_msg_data <<
 
-		action =[
-			[min_linear_x_speed, max_linear_x_speed],
-			[min_angular_z_speed, max_angular_z_speed]
-			#[-0.5, 0.5], # x_speed 
-			##[-0.5, 0.5], # y_speed
-			#[-1, 1] # theta_speed
-		]
+	def __init__(self):
+		self.get_logger().debug('[OdomState] Initialization.')
+
+		self.odometry_msgs = collections.deque(maxlen=2) 
+		self.goal_pose = collections.deque(maxlen=2) 
+		self.done = None
+
+	def update_state(self):
+		self.odometry_msgs.append(self.odometry_msg)
+
+class OdomDepthState():
+	# Sensors callbacks store msgs in this attributes:
+	# 	>> self.laser_scan_msg_data <<
+	# 	>> self.odometry_msg_data <<
+	def __init__(self):
+		self.get_logger().debug('[OdomDepthState] Initialization.')
+
+		self.odometry_msgs = collections.deque(maxlen=2) 
+		self.camera_depth_msgs = collections.deque(maxlen=2) 
+		self.done = None
+
+	def update_state(self):
+		self.odometry_msgs.append(self.odometry_msg)
+		self.camera_depth_msgs.append(self.camera_depth_msg)
 
 
-		low_action = []
-		high_action = []
-		for i in range(len(action)):
-			low_action.append(action[i][0])
-			high_action.append(action[i][1])
+"""
+# Auxiliar functions ()
+"""
 
-		low_action = np.array(low_action, dtype=np.float32)
-		high_action = np.array(high_action, dtype=np.float32)
+def goal_pose_to_distance(pos_x, pos_y, goal_pos_x, goal_pos_y):
+	return math.sqrt((goal_pos_x-pos_x)**2
+			+ (goal_pos_y-pos_y)**2)
 
-		self.action_space = spaces.Box(
-			low=low_action,
-			high=high_action,
-			#shape=(1,),
-			dtype=np.float32
-		)
-		
-		"""
-		state
-		"""
-		state =[
+def goal_pose_to_angle(pos_x, pos_y, yaw,goal_pos_x, goal_pos_y):
+		path_theta = math.atan2(
+			goal_pos_y-pos_y,
+			goal_pos_y-pos_x)
 
-		[0., 5.], # goal_distance 
-		[-math.pi, math.pi], # goal_angle
-		#[-math.pi, math.pi] # yaw
-		]
-		
+		goal_angle = path_theta - yaw
 
-		low_state = []
-		high_state = []
-		for i in range(len(state)):
-			low_state.append(state[i][0])
-			high_state.append(state[i][1])
+		if goal_angle > math.pi:
+			goal_angle -= 2 * math.pi
 
-		self.low_state = np.array(low_state, dtype=np.float32)
-		self.high_state = np.array(high_state, dtype=np.float32)
+		elif goal_angle < -math.pi:
+			goal_angle += 2 * math.pi
+		return goal_angle
 
-		self.observation_space = spaces.Box(
-			low=self.low_state,
-			high=self.high_state,
-			dtype=np.float32
-		)

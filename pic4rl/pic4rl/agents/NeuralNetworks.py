@@ -15,7 +15,8 @@ from tensorflow.keras import backend as K
 import numpy as np
 
 class ActorNetwork(Model):
-	def __init__(self, state_size, max_linear_velocity, max_angular_velocity, lr = 0.00025, 
+	def __init__(
+		self, state_size, max_linear_velocity, max_angular_velocity, lr = 0.00025, 
 			fc1_dims = 512, fc2_dims = 256, fc3_dims = 256, name = 'actor', **kwargs):
 		super(ActorNetwork, self).__init__(**kwargs)
 
